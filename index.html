@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BYS Club Daily Tracker</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #2c2c2c;
+    --muted: #999;
+    --muted-2: #c8c8c8;
+    --border: #ececec;
+    --border-strong: #cfcfcf;
+    --row-line: #f1f1f1;
+    --bg-soft: #fafafa;
+    --accent: #E76F51;
+    --accent-soft: rgba(231, 111, 81, 0.22);
+    --accent-strong: rgba(231, 111, 81, 0.9);
+    --ok: #2A9D8F;
+    --err: #E63946;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", system-ui, sans-serif;
+    color: var(--text); background: var(--bg);
+    font-size: 15px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  input, select { font: inherit; color: inherit; }
+  a { color: var(--text); }
+
+  .app { max-width: 760px; margin: 0 auto; padding: 18px 18px 80px; }
+
+  .topbar {
+    display: flex; gap: 4px; margin-bottom: 24px; padding-bottom: 10px;
+    border-bottom: 1px dashed var(--border);
+    font-size: 12px; color: var(--muted);
+    flex-wrap: wrap; align-items: center;
+  }
+  .topbar a {
+    color: var(--muted); text-decoration: none;
+    padding: 4px 8px; border-radius: 4px;
+  }
+  .topbar a:hover { background: var(--bg-soft); color: var(--text); }
+  .topbar .label { margin-right: 4px; font-weight: 500; color: #666; }
+  .topbar .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .save-state {
+    font-size: 11px; color: var(--ok);
+    opacity: 0; transition: opacity 0.25s;
+  }
+  .save-state.show { opacity: 1; }
+  .save-state.err { color: var(--err); }
+
+  .home h1 { font-size: 22px; margin: 12px 0 4px; }
+  .home p.muted { color: var(--muted); margin-top: 0; font-size: 13px; }
+  .home-section { margin-top: 24px; }
+  .home-section h2 {
+    font-size: 11px; letter-spacing: 0.16em; color: var(--muted);
+    margin: 0 0 8px; text-transform: uppercase; font-weight: 500;
+  }
+  .link-card {
+    display: block; padding: 12px 14px;
+    border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 6px; text-decoration: none; color: var(--text);
+    background: white; transition: border-color 0.15s;
+  }
+  .link-card:hover { border-color: var(--text); }
+  .link-card .lc-name { font-weight: 500; }
+  .link-card .lc-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .link-card .lc-dot {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; margin-right: 8px; vertical-align: middle;
+  }
+
+  .ghost-btn {
+    background: white; border: 1px solid var(--border-strong);
+    padding: 5px 11px; border-radius: 6px; font-size: 12px;
+    cursor: pointer; color: var(--text); text-decoration: none;
+    display: inline-block;
+  }
+  .ghost-btn:hover { border-color: var(--text); }
+  .ghost-btn + .ghost-btn { margin-left: 4px; }
+
+  .tracker-header { text-align: center; margin-bottom: 22px; }
+  .tracker-title { font-size: 11px; letter-spacing: 0.32em; color: var(--muted); margin-bottom: 14px; }
+  .tracker-club-line {
+    font-size: 19px; font-weight: 500; color: var(--text);
+    border-bottom: 1px solid var(--text); padding: 4px 14px 6px;
+    display: inline-block;
+  }
+  .tracker-meta { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .tracker-meta .pct { font-weight: 600; color: var(--accent-strong); font-size: 13px; }
+  .tracker-meta .today-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent-strong);
+    font-size: 11px; font-weight: 500; margin-left: 6px;
+  }
+  .section-title {
+    text-align: center; font-size: 11px; letter-spacing: 0.32em;
+    color: var(--muted); padding: 14px 0;
+    border-top: 1px solid var(--border-strong);
+    border-bottom: 1px solid var(--border); margin-bottom: 6px;
+  }
+  .grid-table { padding: 0 4px; }
+  .day-headers, .week-row {
+    display: grid;
+    grid-template-columns: 32px minmax(70px, 1fr) repeat(7, 30px) 40px;
+    gap: 4px; align-items: center;
+  }
+  .day-headers { padding: 14px 0 6px; font-size: 11px; color: var(--muted); letter-spacing: 0.12em; }
+  .day-headers .dh { text-align: center; }
+  .week-row { padding: 9px 0; border-bottom: 1px solid var(--row-line); }
+  .week-row:last-of-type { border-bottom: none; }
+  .week-label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
+  .week-note {
+    border: none; border-bottom: 1px solid var(--border);
+    padding: 4px 6px; background: transparent; width: 100%;
+    font-size: 13px; color: var(--text); outline: none;
+    transition: border-color 0.15s;
+  }
+  .week-note::placeholder { color: var(--muted-2); }
+  .week-note:focus { border-bottom-color: var(--text); }
+  .week-pct {
+    text-align: right; font-size: 11px;
+    color: var(--muted); font-variant-numeric: tabular-nums;
+    padding-right: 4px;
+  }
+  .week-pct.has { color: var(--accent-strong); font-weight: 500; }
+
+  .cell {
+    width: 30px; height: 30px; border: none; background: transparent;
+    padding: 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.12s, transform 0.05s;
+    position: relative;
+  }
+  .cell:hover:not(:disabled) { background: var(--bg-soft); }
+  .cell:active:not(:disabled) { transform: scale(0.92); }
+  .cell.locked, .cell:disabled { cursor: not-allowed; opacity: 0.55; }
+  .cell.today::after {
+    content: ''; position: absolute; inset: -3px;
+    border: 1.5px solid var(--accent); border-radius: 50%;
+    pointer-events: none; opacity: 0.85;
+  }
+  .cell svg { width: 22px; height: 22px; display: block; }
+
+  @media (max-width: 520px) {
+    .app { padding: 14px 12px 80px; }
+    .day-headers, .week-row {
+      grid-template-columns: 24px minmax(50px, 1fr) repeat(7, 26px) 32px;
+      gap: 2px;
+    }
+    .cell { width: 26px; height: 26px; }
+    .cell svg { width: 18px; height: 18px; }
+    .tracker-club-line { font-size: 16px; }
+    .week-note { font-size: 12px; padding: 3px 4px; }
+    .week-label, .week-pct { font-size: 10px; }
+  }
+
+  .below-actions {
+    display: flex; justify-content: center; gap: 8px; margin-top: 18px; flex-wrap: wrap;
+  }
+  .tracker-footer {
+    text-align: center; margin-top: 32px;
+    font-size: 11px; letter-spacing: 0.16em; color: var(--muted-2);
+  }
+  .tracker-footer .brand { font-weight: 500; letter-spacing: 0.24em; }
+  .tracker-footer .tag { font-size: 10px; margin-top: 2px; opacity: 0.8; }
+
+  .dash-header {
+    border-radius: 10px; padding: 16px 18px;
+    background: var(--accent-soft); border: 1px solid var(--accent);
+    margin-bottom: 18px;
+  }
+  .dash-header h1 { margin: 0; font-size: 17px; font-weight: 500; }
+  .dash-header .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .dash-header .big-pct { font-size: 30px; font-weight: 600; color: var(--accent-strong); margin-top: 6px; }
+  .member-row {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 12px; padding: 14px 4px; border-bottom: 1px solid var(--row-line);
+  }
+  .member-row:last-child { border-bottom: none; }
+  .member-name { font-weight: 500; }
+  .member-note {
+    font-size: 12px; color: #666; margin-top: 4px;
+    max-width: 380px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .member-meta { font-size: 11px; color: var(--muted-2); margin-top: 2px; }
+  .member-stat { text-align: right; }
+  .member-stat .pct { font-size: 18px; font-weight: 600; color: var(--accent-strong); }
+  .member-stat .last { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .heatmap {
+    margin-top: 8px; display: grid;
+    grid-template-columns: repeat(7, 6px);
+    grid-auto-flow: row; gap: 2px; width: max-content;
+  }
+  .heatmap .h-dot {
+    width: 6px; height: 6px; border-radius: 1px;
+    background: var(--row-line);
+  }
+  .heatmap .h-dot.done { background: var(--accent-strong); }
+  .heatmap .h-dot.partial {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-strong);
+    box-sizing: border-box;
+  }
+
+  /* All-clubs view */
+  .all-clubs-header {
+    margin-bottom: 18px;
+  }
+  .all-clubs-header h1 { font-size: 18px; margin: 4px 0; }
+  .all-clubs-header .sub { font-size: 12px; color: var(--muted); }
+
+  .club-block {
+    border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 14px; overflow: hidden;
+  }
+  .club-block-head {
+    padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .club-block-head h2 { margin: 0; font-size: 15px; font-weight: 500; }
+  .club-block-head .sub { font-size: 11px; color: rgba(0,0,0,0.55); margin-top: 2px; }
+  .club-block-head .pct { font-size: 22px; font-weight: 600; }
+  .club-block-body { padding: 6px 12px 14px; }
+  .mini-row {
+    display: grid; grid-template-columns: 1fr auto auto; gap: 10px;
+    padding: 6px 4px; align-items: center; font-size: 13px;
+    border-bottom: 1px solid var(--row-line);
+  }
+  .mini-row:last-child { border-bottom: none; }
+  .mini-row .name { font-weight: 500; }
+  .mini-row .bar {
+    width: 110px; height: 6px; border-radius: 3px;
+    background: var(--row-line); position: relative; overflow: hidden;
+  }
+  .mini-row .bar > i { display: block; height: 100%; border-radius: 3px; }
+  .mini-row .pct-num { font-size: 12px; color: var(--muted); width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Admin */
+  .admin-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; flex-wrap: wrap; }
+  .admin-tab {
+    background: transparent; border: none; padding: 8px 14px;
+    font-size: 13px; color: var(--muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px; cursor: pointer; text-decoration: none;
+  }
+  .admin-tab.active { color: var(--text); border-bottom-color: var(--text); }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .admin-table th {
+    text-align: left; font-weight: 500; color: var(--muted);
+    padding: 6px 8px; border-bottom: 1px solid var(--border);
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .admin-table td {
+    padding: 8px; border-bottom: 1px solid var(--row-line);
+    vertical-align: middle;
+  }
+  .admin-table tr:last-child td { border-bottom: none; }
+  .admin-table .actions { text-align: right; white-space: nowrap; }
+  .admin-table .url-pill {
+    font-family: ui-monospace, monospace; font-size: 11px;
+    color: var(--muted); background: var(--bg-soft);
+    padding: 3px 7px; border-radius: 4px; cursor: pointer;
+  }
+  .admin-table .url-pill:hover { color: var(--text); background: #f0f0f0; }
+  .color-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .form-row { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: center; padding: 5px 0; }
+  .form-row label { color: var(--muted); font-size: 12px; }
+  .form-row input, .form-row select {
+    border: 1px solid var(--border-strong);
+    padding: 6px 8px; border-radius: 4px; width: 100%;
+    background: white; outline: none;
+  }
+  .form-row input:focus, .form-row select:focus { border-color: var(--text); }
+  .color-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .color-swatch {
+    width: 22px; height: 22px; border-radius: 4px;
+    border: 2px solid white; box-shadow: 0 0 0 1px var(--border-strong);
+    cursor: pointer;
+  }
+  .color-swatch.selected { box-shadow: 0 0 0 2px var(--text); }
+  .add-form {
+    background: var(--bg-soft); padding: 14px;
+    border-radius: 8px; margin-bottom: 16px;
+  }
+  .primary-btn {
+    background: var(--text); color: white; border: none;
+    padding: 7px 16px; border-radius: 5px; font-size: 13px; cursor: pointer;
+  }
+  .primary-btn:hover { background: #000; }
+
+  /* Gates (login forms) */
+  .gate-card {
+    max-width: 360px; margin: 60px auto;
+    border: 1px solid var(--border); border-radius: 10px; padding: 24px;
+    background: white;
+  }
+  .gate-card h2 { margin: 0 0 4px; font-size: 17px; }
+  .gate-card p { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+  .gate-card input[type="password"] {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border-strong);
+    border-radius: 6px; outline: none; margin-bottom: 10px;
+  }
+  .gate-card input:focus { border-color: var(--text); }
+  .gate-card .err-msg { color: var(--err); font-size: 12px; margin-top: 4px; min-height: 14px; }
+  .gate-card .gate-actions { display: flex; gap: 6px; margin-top: 6px; }
+  .gate-card .gate-actions .primary-btn { flex: 1; }
+
+  .empty {
+    text-align: center; color: var(--muted);
+    padding: 40px 0; font-size: 13px;
+  }
+  .loading {
+    text-align: center; color: var(--muted);
+    padding: 60px 0; font-size: 13px;
+  }
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%); background: var(--text);
+    color: white; padding: 10px 16px; border-radius: 6px;
+    font-size: 13px; opacity: 0;
+    transition: opacity 0.2s; pointer-events: none; z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+  .toast.err { background: var(--err); }
+</style>
+</head>
+<body>
+<div class="app" id="app"><div class="loading">불러오는 중…</div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ============ Config ============
+const SUPABASE_URL = 'https://jiatcxdopzuedtawtxpt.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_IrO9lYrNBbK4PxLvbuupbA_F4eHzdjW';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const COLOR_PRESETS = [
+  { name: '코랄',     value: '#E76F51' },
+  { name: '청록',     value: '#2A9D8F' },
+  { name: '머스타드', value: '#E9C46A' },
+  { name: '딥블루',   value: '#264653' },
+  { name: '라벤더',   value: '#9381FF' },
+  { name: '핑크',     value: '#EF476F' },
+];
+const TZ_OPTIONS = ['Asia/Seoul', 'America/Los_Angeles', 'America/New_York', 'Europe/London', 'Asia/Tokyo', 'Australia/Sydney'];
+
+// ============ Cache ============
+let cache = {
+  users: [], clubs: [], memberships: [], checkIns: [], weekNotes: [], settings: {},
+  loaded: false, loading: null
+};
+
+async function loadAll() {
+  if (cache.loaded) return cache;
+  if (cache.loading) return cache.loading;
+  cache.loading = (async () => {
+    const [u, c, m, ci, wn, s] = await Promise.all([
+      sb.from('users').select('*'),
+      sb.from('clubs').select('*'),
+      sb.from('memberships').select('*'),
+      sb.from('check_ins').select('*'),
+      sb.from('week_notes').select('*'),
+      sb.from('app_settings').select('*'),
+    ]);
+    if (u.error || c.error || m.error || ci.error || wn.error || s.error) {
+      const err = u.error || c.error || m.error || ci.error || wn.error || s.error;
+      throw err;
+    }
+    cache.users = u.data || [];
+    cache.clubs = c.data || [];
+    cache.memberships = m.data || [];
+    cache.checkIns = ci.data || [];
+    cache.weekNotes = wn.data || [];
+    cache.settings = {};
+    (s.data || []).forEach(r => cache.settings[r.key] = r.value);
+    cache.loaded = true;
+    cache.loading = null;
+    return cache;
+  })();
+  return cache.loading;
+}
+function invalidateCache() { cache.loaded = false; cache.loading = null; }
+
+// ============ Helpers ============
+function findUser(id)         { return cache.users.find(u => u.id === id); }
+function findClub(id)         { return cache.clubs.find(c => c.id === id); }
+function findMembership(id)   { return cache.memberships.find(m => m.id === id); }
+function membershipByToken(t) { return cache.memberships.find(m => m.token === t); }
+function membershipsOfClub(c) { return cache.memberships.filter(m => m.club_id === c); }
+function checkInsOf(mid)      { return cache.checkIns.filter(c => c.membership_id === mid); }
+function noteOf(mid, w)       { return cache.weekNotes.find(n => n.membership_id === mid && n.week === w); }
+function checkInOf(mid, w, d) { return cache.checkIns.find(c => c.membership_id === mid && c.week === w && c.day === d); }
+
+function getTodayInfo(club) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = new Date(club.start_date + 'T00:00:00');
+  const days = Math.floor((today - start) / 86400000);
+  const week = Math.floor(days / 7) + 1;
+  const day = ((days % 7) + 7) % 7;
+  const valid = days >= 0 && week <= 8;
+  return { week, day, days, valid };
+}
+function isCellEditable(week, day, today) {
+  if (today.days < 0) return false;
+  const cellAbs = (week - 1) * 7 + day;
+  const todayAbs = (today.week - 1) * 7 + today.day;
+  if (cellAbs < 0 || cellAbs >= 56) return false;
+  return Math.abs(cellAbs - todayAbs) <= 1;
+}
+function nextState(s) {
+  if (s === 'empty' || !s) return 'done';
+  if (s === 'done') return 'partial';
+  return 'empty';
+}
+function stateScore(s) { return s === 'done' ? 1 : (s === 'partial' ? 0.5 : 0); }
+function membershipPct(m) {
+  const sum = checkInsOf(m.id).reduce((a, c) => a + stateScore(c.state), 0);
+  return Math.round((sum / 56) * 100);
+}
+function weekPct(m, w) {
+  let sum = 0;
+  for (let d = 0; d < 7; d++) {
+    const c = checkInOf(m.id, w, d);
+    if (c) sum += stateScore(c.state);
+  }
+  return Math.round((sum / 7) * 100);
+}
+function clubAvgPct(cid) {
+  const ms = membershipsOfClub(cid);
+  if (!ms.length) return 0;
+  return Math.round(ms.reduce((a, m) => a + membershipPct(m), 0) / ms.length);
+}
+function timeSince(ts) {
+  if (!ts) return '아직 없음';
+  const m = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
+  if (m < 1) return '방금';
+  if (m < 60) return m + '분 전';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + '시간 전';
+  return Math.floor(h / 24) + '일 전';
+}
+function lastCheckTs(mid) {
+  const cs = checkInsOf(mid);
+  if (!cs.length) return null;
+  return Math.max.apply(null, cs.map(c => new Date(c.updated_at).getTime() || 0));
+}
+function getRecentSunday(daysAgo) {
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() - (daysAgo || 0));
+  d.setDate(d.getDate() - d.getDay());
+  return d.toISOString().slice(0, 10);
+}
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function hexToRgba(hex, a) {
+  const m = String(hex).match(/^#?([a-fA-F0-9]{6})$/);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return 'rgba(' + ((n>>16)&255) + ',' + ((n>>8)&255) + ',' + (n&255) + ',' + a + ')';
+}
+
+// SVG cells
+function svgEmpty()       { return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#cfcfcf" stroke-width="1.4"/></svg>'; }
+function svgDone(color)   { return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="' + color + '"/></svg>'; }
+function svgPartial(color){ return '<svg viewBox="0 0 24 24"><polygon points="12,3 22,21 2,21" fill="' + hexToRgba(color, 0.25) + '" stroke="' + color + '" stroke-width="1.6" stroke-linejoin="round"/></svg>'; }
+function cellSvg(state, club) {
+  if (state === 'done')    return svgDone(club.color);
+  if (state === 'partial') return svgPartial(club.color);
+  return svgEmpty();
+}
+
+// Toast / save indicator
+let saveTimer = null;
+function flashSave(isErr) {
+  const e = document.querySelector('.save-state');
+  if (!e) return;
+  e.textContent = isErr ? '저장 실패' : '저장됨 · 방금';
+  e.classList.toggle('err', !!isErr);
+  e.classList.add('show');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => e.classList.remove('show'), isErr ? 2400 : 1100);
+}
+function toast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!isErr);
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// Theme
+function setTheme(color) {
+  if (color) {
+    document.documentElement.style.setProperty('--accent', color);
+    document.documentElement.style.setProperty('--accent-soft', hexToRgba(color, 0.22));
+    document.documentElement.style.setProperty('--accent-strong', hexToRgba(color, 0.9));
+  } else {
+    document.documentElement.style.setProperty('--accent', '#E76F51');
+    document.documentElement.style.setProperty('--accent-soft', 'rgba(231, 111, 81, 0.22)');
+    document.documentElement.style.setProperty('--accent-strong', 'rgba(231, 111, 81, 0.9)');
+  }
+}
+
+// Gates
+function memberGatePassed() { return sessionStorage.getItem('bys.memberGate') === '1'; }
+function adminGatePassed()  { return sessionStorage.getItem('bys.adminGate')  === '1'; }
+function passMemberGate()   { sessionStorage.setItem('bys.memberGate', '1'); }
+function passAdminGate()    { sessionStorage.setItem('bys.adminGate',  '1'); }
+
+// ============ Routing ============
+async function route() {
+  const hash = location.hash || '#/';
+  const app = document.getElementById('app');
+  app.innerHTML = '<div class="loading">불러오는 중…</div>';
+  try {
+    await loadAll();
+  } catch (e) {
+    console.error(e);
+    app.innerHTML = '<div class="empty">데이터 불러오기 실패: ' + escapeHtml(e.message || String(e)) + '</div>';
+    return;
+  }
+  app.innerHTML = '';
+  app.appendChild(renderTopbar());
+
+  let view;
+  try {
+    if (hash === '#/' || hash === '#') {
+      setTheme();
+      view = renderHome();
+    } else if (hash.startsWith('#/t/')) {
+      view = renderTracker(decodeURIComponent(hash.slice(4)));
+    } else if (hash.startsWith('#/club/')) {
+      view = renderClubDash(hash.slice(7));
+    } else if (hash === '#/all' || hash === '#/all/') {
+      setTheme();
+      if (!memberGatePassed()) view = renderMemberGate();
+      else view = renderAllClubs();
+    } else if (hash.startsWith('#/admin')) {
+      setTheme();
+      if (!adminGatePassed()) view = renderAdminGate();
+      else view = renderAdmin(hash.slice(7).replace(/^\//, ''));
+    } else {
+      setTheme();
+      view = renderHome();
+    }
+  } catch (e) {
+    console.error(e);
+    view = document.createElement('div');
+    view.className = 'empty';
+    view.textContent = '오류: ' + (e.message || String(e));
+  }
+  app.appendChild(view);
+  window.scrollTo(0, 0);
+}
+
+function renderTopbar() {
+  const div = document.createElement('div');
+  div.className = 'topbar';
+  div.innerHTML =
+    '<span class="label">BYS</span>' +
+    '<a href="#/">홈</a>' +
+    '<a href="#/all">모든 클럽</a>' +
+    '<a href="#/admin">관리자</a>' +
+    '<span class="right">' +
+      '<span class="save-state">저장됨 · 방금</span>' +
+    '</span>';
+  return div;
+}
+window.addEventListener('hashchange', route);
+
+// ============ Home ============
+function renderHome() {
+  const wrap = document.createElement('div');
+  wrap.className = 'home';
+  const memberLinks = cache.memberships.map(m => {
+    const u = findUser(m.user_id), c = findClub(m.club_id);
+    if (!u || !c) return '';
+    return '<a class="link-card" href="#/t/' + escapeHtml(m.token) + '">' +
+      '<div><span class="lc-dot" style="background:' + c.color + '"></span>' +
+      '<b class="lc-name">' + escapeHtml(u.name) + '</b> — ' + escapeHtml(c.name) +
+      '<span class="lc-sub" style="display:inline; margin-left:6px">(' + escapeHtml(c.period) + ')</span></div>' +
+    '</a>';
+  }).join('') || '<div class="empty">아직 멤버가 없어요. 관리자 페이지에서 만들어주세요.</div>';
+  const clubLinks = cache.clubs.map(c =>
+    '<a class="link-card" href="#/club/' + c.id + '">' +
+      '<div><span class="lc-dot" style="background:' + c.color + '"></span>' +
+      '<b class="lc-name">' + escapeHtml(c.name) + '</b> 대시보드</div>' +
+      '<div class="lc-sub">' + escapeHtml(c.period) + ' · 멤버 ' + membershipsOfClub(c.id).length + '명 · 평균 ' + clubAvgPct(c.id) + '%</div>' +
+    '</a>').join('') || '<div class="empty">아직 클럽이 없어요.</div>';
+  wrap.innerHTML =
+    '<h1>BYS Club Daily Tracker</h1>' +
+    '<p class="muted">매일 한 번씩 체크하고, 같이 응원해요.</p>' +
+    '<div class="home-section"><h2>나의 트래커</h2>' + memberLinks + '</div>' +
+    '<div class="home-section"><h2>클럽 대시보드</h2>' + clubLinks + '</div>' +
+    '<div class="home-section"><h2>모두 함께</h2>' +
+      '<a class="link-card" href="#/all"><b>모든 클럽 보기 →</b><div class="lc-sub">우리 BYS 모든 클럽이 어떻게 가고 있는지</div></a>' +
+      '<a class="link-card" href="#/admin"><b>관리자</b><div class="lc-sub">사용자/클럽/멤버십 관리</div></a>' +
+    '</div>';
+  return wrap;
+}
+
+// ============ Tracker ============
+function renderTracker(token) {
+  const wrap = document.createElement('div');
+  const m = membershipByToken(token);
+  if (!m) {
+    setTheme();
+    wrap.innerHTML = '<div class="empty">트래커를 찾을 수 없습니다. <a href="#/">홈으로</a></div>';
+    return wrap;
+  }
+  passMemberGate(); // valid token = BYS member
+  const user = findUser(m.user_id);
+  const club = findClub(m.club_id);
+  setTheme(club.color);
+
+  const today = getTodayInfo(club);
+  const totalPct = membershipPct(m);
+  const dayLabels = ['S','M','T','W','T','F','S'];
+  const dayKor = ['일','월','화','수','목','금','토'];
+  const todayPill = today.valid
+    ? '<span class="today-pill">오늘 W' + today.week + ' · ' + dayKor[today.day] + '</span>'
+    : (today.days < 0 ? '<span class="today-pill">아직 시작 안 함</span>'
+                       : '<span class="today-pill">학기 종료</span>');
+
+  let rowsHtml = '';
+  for (let w = 1; w <= 8; w++) {
+    const note = noteOf(m.id, w);
+    let cellsHtml = '';
+    for (let d = 0; d < 7; d++) {
+      const ci = checkInOf(m.id, w, d);
+      const state = ci ? ci.state : 'empty';
+      const editable = isCellEditable(w, d, today);
+      const isTodayCell = today.valid && w === today.week && d === today.day;
+      const cls = ['cell', state, editable ? '' : 'locked', isTodayCell ? 'today' : ''].filter(Boolean).join(' ');
+      cellsHtml += '<button class="' + cls + '" data-week="' + w + '" data-day="' + d + '"' +
+        (editable ? '' : ' disabled') + ' title="W' + w + ' ' + dayKor[d] + '">' +
+        cellSvg(state, club) + '</button>';
+    }
+    const wp = weekPct(m, w);
+    rowsHtml +=
+      '<div class="week-row">' +
+        '<div class="week-label">W' + w + '</div>' +
+        '<input class="week-note" data-week="' + w + '" type="text" ' +
+          'value="' + escapeHtml(note ? note.text : '') + '" ' +
+          'placeholder="이번 주 한 일/메모" />' +
+        cellsHtml +
+        '<div class="week-pct ' + (wp > 0 ? 'has' : '') + '">' + wp + '%</div>' +
+      '</div>';
+  }
+
+  wrap.innerHTML =
+    '<div class="tracker-header">' +
+      '<div class="tracker-title">BYS CLUB DAILY TRACKER</div>' +
+      '<div class="tracker-club-line">' + escapeHtml(club.name) + ' — ' + escapeHtml(club.period) + ' — ' + escapeHtml(user.name) + '</div>' +
+      '<div class="tracker-meta">' +
+        escapeHtml(club.description) + ' · ' + escapeHtml(user.timezone) +
+        ' · 전체 <span class="pct">' + totalPct + '%</span>' + todayPill +
+      '</div>' +
+    '</div>' +
+    '<div class="section-title">HABIT FOR THIS SEMESTER</div>' +
+    '<div class="grid-table">' +
+      '<div class="day-headers">' +
+        '<div></div><div></div>' +
+        dayLabels.map(d => '<div class="dh">' + d + '</div>').join('') +
+        '<div></div>' +
+      '</div>' +
+      rowsHtml +
+    '</div>' +
+    '<div class="below-actions">' +
+      '<a class="ghost-btn" href="#/club/' + club.id + '">우리 클럽 보기 →</a>' +
+      '<a class="ghost-btn" href="#/all">모든 클럽 보기 →</a>' +
+    '</div>' +
+    '<div class="tracker-footer">' +
+      '<div class="brand">⊞ BE YOURSELF</div>' +
+      '<div class="tag">영어로 나를 브랜딩하다</div>' +
+    '</div>';
+
+  // Cell clicks → optimistic + Supabase
+  wrap.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.cell');
+    if (!btn || btn.disabled) return;
+    const week = parseInt(btn.dataset.week, 10);
+    const day = parseInt(btn.dataset.day, 10);
+    if (!isCellEditable(week, day, today)) return;
+    const ci = checkInOf(m.id, week, day);
+    const newState = nextState(ci ? ci.state : 'empty');
+    // optimistic update
+    const prevCheckIns = cache.checkIns;
+    if (newState === 'empty') {
+      cache.checkIns = cache.checkIns.filter(c => !(c.membership_id === m.id && c.week === week && c.day === day));
+    } else if (ci) {
+      ci.state = newState; ci.updated_at = new Date().toISOString();
+    } else {
+      cache.checkIns.push({
+        id: 'temp_' + Math.random().toString(36).slice(2,9),
+        membership_id: m.id, week, day, state: newState,
+        updated_at: new Date().toISOString()
+      });
+    }
+    const isTodayCell = today.valid && week === today.week && day === today.day;
+    btn.className = ['cell', newState, '', isTodayCell ? 'today' : ''].filter(Boolean).join(' ');
+    btn.innerHTML = cellSvg(newState, club);
+    const row = btn.closest('.week-row');
+    const pctEl = row.querySelector('.week-pct');
+    const wp = weekPct(m, week);
+    pctEl.textContent = wp + '%';
+    pctEl.className = 'week-pct ' + (wp > 0 ? 'has' : '');
+    const totalEl = wrap.querySelector('.tracker-meta .pct');
+    if (totalEl) totalEl.textContent = membershipPct(m) + '%';
+
+    // persist
+    try {
+      if (newState === 'empty') {
+        const { error } = await sb.from('check_ins').delete()
+          .eq('membership_id', m.id).eq('week', week).eq('day', day);
+        if (error) throw error;
+      } else {
+        const { data, error } = await sb.from('check_ins').upsert({
+          membership_id: m.id, week, day, state: newState,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'membership_id,week,day' }).select().single();
+        if (error) throw error;
+        // replace temp record with real one
+        cache.checkIns = cache.checkIns.filter(c => !(c.membership_id === m.id && c.week === week && c.day === day));
+        if (data) cache.checkIns.push(data);
+      }
+      flashSave();
+    } catch (err) {
+      console.error(err);
+      cache.checkIns = prevCheckIns;
+      flashSave(true);
+      toast('저장 실패: ' + (err.message || err), true);
+      // re-render this row
+      const ci2 = checkInOf(m.id, week, day);
+      const st2 = ci2 ? ci2.state : 'empty';
+      btn.className = ['cell', st2, '', isTodayCell ? 'today' : ''].filter(Boolean).join(' ');
+      btn.innerHTML = cellSvg(st2, club);
+    }
+  });
+
+  // Note inputs (debounced)
+  wrap.addEventListener('input', (e) => {
+    if (!e.target.matches('.week-note')) return;
+    const week = parseInt(e.target.dataset.week, 10);
+    const text = e.target.value;
+    let n = noteOf(m.id, week);
+    if (n) { n.text = text; n.updated_at = new Date().toISOString(); }
+    else { cache.weekNotes.push({ id: 'temp_' + Math.random().toString(36).slice(2,9), membership_id: m.id, week, text, updated_at: new Date().toISOString() }); }
+
+    clearTimeout(wrap._noteSaveTimer);
+    wrap._noteSaveTimer = setTimeout(async () => {
+      try {
+        const { data, error } = await sb.from('week_notes').upsert({
+          membership_id: m.id, week, text,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'membership_id,week' }).select().single();
+        if (error) throw error;
+        // replace local with server record
+        cache.weekNotes = cache.weekNotes.filter(x => !(x.membership_id === m.id && x.week === week));
+        if (data) cache.weekNotes.push(data);
+        flashSave();
+      } catch (err) {
+        console.error(err);
+        flashSave(true);
+        toast('메모 저장 실패: ' + (err.message || err), true);
+      }
+    }, 500);
+  });
+
+  setTimeout(() => {
+    if (today.valid && window.innerWidth < 600) {
+      const todayBtn = wrap.querySelector('.cell.today');
+      if (todayBtn) todayBtn.closest('.week-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 80);
+
+  return wrap;
+}
+
+// ============ Club Dashboard ============
+function renderClubDash(clubId) {
+  const wrap = document.createElement('div');
+  const club = findClub(clubId);
+  if (!club) {
+    setTheme();
+    wrap.innerHTML = '<div class="empty">클럽을 찾을 수 없습니다. <a href="#/">홈으로</a></div>';
+    return wrap;
+  }
+  setTheme(club.color);
+
+  const memberships = membershipsOfClub(clubId).slice().sort((a,b) => membershipPct(b) - membershipPct(a));
+  const today = getTodayInfo(club);
+  const currentWeek = today.valid ? today.week : null;
+
+  let memberHtml = memberships.map(m => {
+    const u = findUser(m.user_id);
+    if (!u) return '';
+    const currentNote = currentWeek ? noteOf(m.id, currentWeek) : null;
+    let dotsHtml = '';
+    for (let w = 1; w <= 8; w++) {
+      for (let d = 0; d < 7; d++) {
+        const ci = checkInOf(m.id, w, d);
+        const cls = ci ? ('h-dot ' + ci.state) : 'h-dot';
+        dotsHtml += '<div class="' + cls + '"></div>';
+      }
+    }
+    const last = lastCheckTs(m.id);
+    return '<div class="member-row">' +
+      '<div>' +
+        '<div class="member-name">' + escapeHtml(u.name) + '</div>' +
+        '<div class="member-note">' + (currentNote && currentNote.text ? '✏ ' + escapeHtml(currentNote.text) : '') + '</div>' +
+        '<div class="member-meta">' + escapeHtml(u.timezone) + '</div>' +
+        '<div class="heatmap">' + dotsHtml + '</div>' +
+      '</div>' +
+      '<div class="member-stat">' +
+        '<div class="pct">' + membershipPct(m) + '%</div>' +
+        '<div class="last">' + timeSince(last) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('') || '<div class="empty">아직 멤버가 없어요.</div>';
+
+  wrap.innerHTML =
+    '<div class="dash-header" style="background:' + hexToRgba(club.color, 0.13) + '; border-color:' + club.color + ';">' +
+      '<h1>' + escapeHtml(club.name) + '</h1>' +
+      '<div class="meta">' + escapeHtml(club.period) + ' · ' + escapeHtml(club.description) + ' · 멤버 ' + memberships.length + '명' +
+        (currentWeek ? ' · 현재 <b>W' + currentWeek + '</b>' : '') + '</div>' +
+      '<div class="big-pct" style="color:' + club.color + '">' + clubAvgPct(clubId) + '%</div>' +
+    '</div>' +
+    '<div>' + memberHtml + '</div>';
+  return wrap;
+}
+
+// ============ All Clubs (gated) ============
+function renderAllClubs() {
+  const wrap = document.createElement('div');
+  const clubs = cache.clubs.slice().sort((a,b) => clubAvgPct(b.id) - clubAvgPct(a.id));
+  const totalMembers = cache.memberships.length;
+  const overall = clubs.length
+    ? Math.round(clubs.reduce((a, c) => a + clubAvgPct(c.id), 0) / clubs.length)
+    : 0;
+
+  let body = clubs.map(c => {
+    const ms = membershipsOfClub(c.id).slice().sort((a, b) => membershipPct(b) - membershipPct(a));
+    const today = getTodayInfo(c);
+    const week = today.valid ? today.week : null;
+    const rows = ms.map(m => {
+      const u = findUser(m.user_id);
+      if (!u) return '';
+      const pct = membershipPct(m);
+      const note = week ? noteOf(m.id, week) : null;
+      return '<div class="mini-row">' +
+        '<div>' +
+          '<span class="name">' + escapeHtml(u.name) + '</span>' +
+          (note && note.text ? ' <span style="color:var(--muted); font-size:11px">· ' + escapeHtml(note.text) + '</span>' : '') +
+        '</div>' +
+        '<div class="bar"><i style="width:' + pct + '%; background:' + c.color + '"></i></div>' +
+        '<div class="pct-num">' + pct + '%</div>' +
+      '</div>';
+    }).join('') || '<div class="empty" style="padding:10px 0">멤버 없음</div>';
+    return '<div class="club-block">' +
+      '<div class="club-block-head" style="background:' + hexToRgba(c.color, 0.18) + '">' +
+        '<div>' +
+          '<h2>' + escapeHtml(c.name) + '</h2>' +
+          '<div class="sub">' + escapeHtml(c.period) + ' · 멤버 ' + ms.length + '명' +
+            (week ? ' · 현재 W' + week : '') + '</div>' +
+        '</div>' +
+        '<div class="pct" style="color:' + c.color + '">' + clubAvgPct(c.id) + '%</div>' +
+      '</div>' +
+      '<div class="club-block-body">' + rows + '</div>' +
+    '</div>';
+  }).join('') || '<div class="empty">아직 클럽이 없어요.</div>';
+
+  wrap.innerHTML =
+    '<div class="all-clubs-header">' +
+      '<h1>모든 클럽 한눈에</h1>' +
+      '<div class="sub">총 ' + clubs.length + '개 클럽 · ' + totalMembers + '명 · 평균 ' + overall + '%</div>' +
+    '</div>' +
+    body;
+  return wrap;
+}
+
+// ============ Member Gate ============
+function renderMemberGate() {
+  const wrap = document.createElement('div');
+  wrap.innerHTML =
+    '<div class="gate-card">' +
+      '<h2>BYS 멤버 확인</h2>' +
+      '<p>모든 클럽 보기는 BYS 멤버만 볼 수 있어요. 클럽 비밀번호를 입력해주세요.</p>' +
+      '<input id="g-pw" type="password" placeholder="비밀번호" autocomplete="off" autofocus>' +
+      '<div class="err-msg" id="g-err"></div>' +
+      '<div class="gate-actions">' +
+        '<button class="primary-btn" id="g-go">들어가기</button>' +
+      '</div>' +
+    '</div>';
+  const tryGo = () => {
+    const pw = wrap.querySelector('#g-pw').value;
+    if (pw && pw === cache.settings.member_gate_password) {
+      passMemberGate();
+      route();
+    } else {
+      wrap.querySelector('#g-err').textContent = '비밀번호가 맞지 않아요.';
+    }
+  };
+  wrap.querySelector('#g-go').addEventListener('click', tryGo);
+  wrap.querySelector('#g-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryGo(); });
+  return wrap;
+}
+
+// ============ Admin Gate ============
+function renderAdminGate() {
+  const wrap = document.createElement('div');
+  wrap.innerHTML =
+    '<div class="gate-card">' +
+      '<h2>관리자 로그인</h2>' +
+      '<p>관리자 비밀번호를 입력해주세요.</p>' +
+      '<input id="g-pw" type="password" placeholder="비밀번호" autocomplete="off" autofocus>' +
+      '<div class="err-msg" id="g-err"></div>' +
+      '<div class="gate-actions">' +
+        '<button class="primary-btn" id="g-go">들어가기</button>' +
+      '</div>' +
+    '</div>';
+  const tryGo = () => {
+    const pw = wrap.querySelector('#g-pw').value;
+    if (pw && pw === cache.settings.admin_password) {
+      passAdminGate();
+      route();
+    } else {
+      wrap.querySelector('#g-err').textContent = '비밀번호가 맞지 않아요.';
+    }
+  };
+  wrap.querySelector('#g-go').addEventListener('click', tryGo);
+  wrap.querySelector('#g-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryGo(); });
+  return wrap;
+}
+
+// ============ Admin ============
+function renderAdmin(tab) {
+  tab = tab || 'clubs';
+  const wrap = document.createElement('div');
+  wrap.innerHTML =
+    '<h1 style="font-size:18px; margin: 4px 0 12px;">관리자</h1>' +
+    '<div class="admin-tabs">' +
+      '<a class="admin-tab ' + (tab==='clubs'?'active':'') + '" href="#/admin/clubs">클럽</a>' +
+      '<a class="admin-tab ' + (tab==='users'?'active':'') + '" href="#/admin/users">사용자</a>' +
+      '<a class="admin-tab ' + (tab==='memberships'?'active':'') + '" href="#/admin/memberships">멤버십 (URL)</a>' +
+      '<a class="admin-tab ' + (tab==='settings'?'active':'') + '" href="#/admin/settings">설정</a>' +
+    '</div>' +
+    '<div id="admin-tab-body"></div>';
+  const body = wrap.querySelector('#admin-tab-body');
+  if (tab === 'clubs')           renderAdminClubs(body);
+  else if (tab === 'users')      renderAdminUsers(body);
+  else if (tab === 'settings')   renderAdminSettings(body);
+  else                            renderAdminMemberships(body);
+  return wrap;
+}
+
+function renderAdminClubs(body) {
+  let formColor = COLOR_PRESETS[0].value;
+  body.innerHTML =
+    '<div class="add-form">' +
+      '<div style="font-weight:500; margin-bottom:8px;">+ 새 클럽 추가</div>' +
+      '<div class="form-row"><label>이름</label><input id="cf-name" placeholder="예: CEO의 책장"></div>' +
+      '<div class="form-row"><label>기간 라벨</label><input id="cf-period" placeholder="예: 26년 2,3월"></div>' +
+      '<div class="form-row"><label>설명</label><input id="cf-desc" placeholder="예: 매일 책 읽기"></div>' +
+      '<div class="form-row"><label>시작일 (일요일)</label><input id="cf-start" type="date" value="' + getRecentSunday(0) + '"></div>' +
+      '<div class="form-row"><label>컬러</label>' +
+        '<div class="color-row" id="cf-colors">' +
+          COLOR_PRESETS.map((c, i) =>
+            '<div class="color-swatch ' + (i===0?'selected':'') + '" data-color="' + c.value + '" style="background:' + c.value + '" title="' + c.name + '"></div>'
+          ).join('') +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:right; margin-top:10px;">' +
+        '<button class="primary-btn" id="cf-submit">생성</button>' +
+      '</div>' +
+    '</div>' +
+    '<table class="admin-table">' +
+      '<thead><tr><th>이름</th><th>기간</th><th>설명</th><th>시작일</th><th>멤버</th><th>평균</th><th></th></tr></thead>' +
+      '<tbody>' +
+        cache.clubs.map(c =>
+          '<tr>' +
+            '<td><span class="color-dot" style="background:' + c.color + '"></span>' + escapeHtml(c.name) + '</td>' +
+            '<td>' + escapeHtml(c.period) + '</td>' +
+            '<td>' + escapeHtml(c.description) + '</td>' +
+            '<td>' + escapeHtml(c.start_date) + '</td>' +
+            '<td>' + membershipsOfClub(c.id).length + '</td>' +
+            '<td>' + clubAvgPct(c.id) + '%</td>' +
+            '<td class="actions">' +
+              '<a class="ghost-btn" href="#/club/' + c.id + '">대시보드</a>' +
+              '<button class="ghost-btn" data-action="del-club" data-id="' + c.id + '">삭제</button>' +
+            '</td>' +
+          '</tr>'
+        ).join('') +
+      '</tbody>' +
+    '</table>';
+
+  body.querySelectorAll('#cf-colors .color-swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      body.querySelectorAll('#cf-colors .color-swatch').forEach(s => s.classList.remove('selected'));
+      sw.classList.add('selected');
+      formColor = sw.dataset.color;
+    });
+  });
+
+  body.querySelector('#cf-submit').addEventListener('click', async () => {
+    const name = body.querySelector('#cf-name').value.trim();
+    const period = body.querySelector('#cf-period').value.trim();
+    const desc = body.querySelector('#cf-desc').value.trim();
+    const start = body.querySelector('#cf-start').value;
+    if (!name) return toast('이름을 입력해주세요', true);
+    if (!start) return toast('시작일을 선택해주세요', true);
+    try {
+      const { data, error } = await sb.from('clubs').insert({
+        name, period, description: desc, start_date: start, color: formColor
+      }).select().single();
+      if (error) throw error;
+      cache.clubs.push(data);
+      renderAdminClubs(body);
+      toast('클럽 생성됨');
+    } catch (err) { toast('생성 실패: ' + (err.message || err), true); }
+  });
+
+  body.querySelectorAll('[data-action="del-club"]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const id = b.dataset.id;
+      if (!confirm('이 클럽과 모든 멤버십·기록을 삭제할까요?')) return;
+      try {
+        const { error } = await sb.from('clubs').delete().eq('id', id);
+        if (error) throw error;
+        invalidateCache();
+        await loadAll();
+        renderAdminClubs(body);
+      } catch (err) { toast('삭제 실패: ' + (err.message || err), true); }
+    });
+  });
+}
+
+function renderAdminUsers(body) {
+  body.innerHTML =
+    '<div class="add-form">' +
+      '<div style="font-weight:500; margin-bottom:8px;">+ 새 사용자 추가</div>' +
+      '<div class="form-row"><label>이름</label><input id="uf-name" placeholder="예: 홍길동"></div>' +
+      '<div class="form-row"><label>시간대</label>' +
+        '<select id="uf-tz">' + TZ_OPTIONS.map(t => '<option>' + t + '</option>').join('') + '</select>' +
+      '</div>' +
+      '<div style="text-align:right; margin-top:10px;">' +
+        '<button class="primary-btn" id="uf-submit">생성</button>' +
+      '</div>' +
+    '</div>' +
+    '<table class="admin-table">' +
+      '<thead><tr><th>이름</th><th>시간대</th><th>속한 클럽</th><th></th></tr></thead>' +
+      '<tbody>' +
+        cache.users.map(u => {
+          const ms = cache.memberships.filter(m => m.user_id === u.id);
+          return '<tr>' +
+            '<td>' + escapeHtml(u.name) + '</td>' +
+            '<td>' + escapeHtml(u.timezone) + '</td>' +
+            '<td>' + (ms.map(m => {
+              const c = findClub(m.club_id);
+              return c ? '<span class="color-dot" style="background:' + c.color + '"></span>' + escapeHtml(c.name) : '';
+            }).join(' &nbsp; ') || '<span style="color:var(--muted-2)">없음</span>') + '</td>' +
+            '<td class="actions">' +
+              '<button class="ghost-btn" data-action="del-user" data-id="' + u.id + '">삭제</button>' +
+            '</td>' +
+          '</tr>';
+        }).join('') +
+      '</tbody>' +
+    '</table>';
+
+  body.querySelector('#uf-submit').addEventListener('click', async () => {
+    const name = body.querySelector('#uf-name').value.trim();
+    const tz = body.querySelector('#uf-tz').value;
+    if (!name) return toast('이름을 입력해주세요', true);
+    try {
+      const { data, error } = await sb.from('users').insert({ name, timezone: tz }).select().single();
+      if (error) throw error;
+      cache.users.push(data);
+      renderAdminUsers(body);
+      toast('사용자 생성됨');
+    } catch (err) { toast('생성 실패: ' + (err.message || err), true); }
+  });
+  body.querySelectorAll('[data-action="del-user"]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const id = b.dataset.id;
+      if (!confirm('이 사용자와 모든 멤버십·기록을 삭제할까요?')) return;
+      try {
+        const { error } = await sb.from('users').delete().eq('id', id);
+        if (error) throw error;
+        invalidateCache();
+        await loadAll();
+        renderAdminUsers(body);
+      } catch (err) { toast('삭제 실패: ' + (err.message || err), true); }
+    });
+  });
+}
+
+function genToken(name, clubName) {
+  const base = (name + '-' + clubName).replace(/\s+/g, '').replace(/[^a-zA-Z0-9가-힣-]/g, '').slice(0, 18);
+  const rand = Math.random().toString(36).slice(2, 6);
+  return (base + '-' + rand).toLowerCase();
+}
+
+function renderAdminMemberships(body) {
+  body.innerHTML =
+    '<div class="add-form">' +
+      '<div style="font-weight:500; margin-bottom:8px;">+ 멤버십 추가 (사용자를 클럽에 배정)</div>' +
+      '<div class="form-row"><label>사용자</label>' +
+        '<select id="mf-user">' + cache.users.map(u => '<option value="' + u.id + '">' + escapeHtml(u.name) + '</option>').join('') + '</select>' +
+      '</div>' +
+      '<div class="form-row"><label>클럽</label>' +
+        '<select id="mf-club">' + cache.clubs.map(c => '<option value="' + c.id + '">' + escapeHtml(c.name) + ' (' + escapeHtml(c.period) + ')</option>').join('') + '</select>' +
+      '</div>' +
+      '<div style="text-align:right; margin-top:10px;">' +
+        '<button class="primary-btn" id="mf-submit">URL 발급</button>' +
+      '</div>' +
+    '</div>' +
+    '<table class="admin-table">' +
+      '<thead><tr><th>사용자</th><th>클럽</th><th>URL</th><th>진행률</th><th></th></tr></thead>' +
+      '<tbody>' +
+        cache.memberships.map(m => {
+          const u = findUser(m.user_id), c = findClub(m.club_id);
+          if (!u || !c) return '';
+          const url = location.origin + location.pathname + '#/t/' + m.token;
+          return '<tr>' +
+            '<td>' + escapeHtml(u.name) + '</td>' +
+            '<td><span class="color-dot" style="background:' + c.color + '"></span>' + escapeHtml(c.name) + '</td>' +
+            '<td><span class="url-pill" data-action="copy-url" data-url="' + escapeHtml(url) + '" title="클릭해서 복사">#/t/' + escapeHtml(m.token) + '</span></td>' +
+            '<td>' + membershipPct(m) + '%</td>' +
+            '<td class="actions">' +
+              '<a class="ghost-btn" href="#/t/' + escapeHtml(m.token) + '">열기</a>' +
+              '<button class="ghost-btn" data-action="msg" data-id="' + m.id + '">카톡 텍스트</button>' +
+              '<button class="ghost-btn" data-action="regen" data-id="' + m.id + '">URL 재생성</button>' +
+              '<button class="ghost-btn" data-action="del-membership" data-id="' + m.id + '">삭제</button>' +
+            '</td>' +
+          '</tr>';
+        }).join('') +
+      '</tbody>' +
+    '</table>';
+
+  body.querySelector('#mf-submit').addEventListener('click', async () => {
+    const userId = body.querySelector('#mf-user').value;
+    const clubId = body.querySelector('#mf-club').value;
+    if (!userId || !clubId) return;
+    if (cache.memberships.some(m => m.user_id === userId && m.club_id === clubId)) {
+      return toast('이미 이 클럽에 가입되어 있어요', true);
+    }
+    const u = findUser(userId), c = findClub(clubId);
+    let token = genToken(u.name, c.name), tries = 0;
+    while (cache.memberships.some(m => m.token === token) && tries < 5) {
+      token = genToken(u.name, c.name); tries++;
+    }
+    try {
+      const { data, error } = await sb.from('memberships').insert({
+        user_id: userId, club_id: clubId, token
+      }).select().single();
+      if (error) throw error;
+      cache.memberships.push(data);
+      renderAdminMemberships(body);
+      toast('URL 발급 완료');
+    } catch (err) { toast('생성 실패: ' + (err.message || err), true); }
+  });
+
+  body.querySelectorAll('[data-action="copy-url"]').forEach(b => {
+    b.addEventListener('click', () => {
+      navigator.clipboard.writeText(b.dataset.url).then(
+        () => toast('URL 복사됨'),
+        () => toast('복사 실패 — 직접 선택해 복사해주세요', true)
+      );
+    });
+  });
+  body.querySelectorAll('[data-action="msg"]').forEach(b => {
+    b.addEventListener('click', () => {
+      const m = findMembership(b.dataset.id);
+      const u = findUser(m.user_id); const c = findClub(m.club_id);
+      const url = location.origin + location.pathname + '#/t/' + m.token;
+      const text = '안녕 ' + u.name + '님!\n' + c.name + ' (' + c.period + ') 트래커예요 :)\n매일 한 번씩 들러서 체크해주세요 ✓\n' + url;
+      navigator.clipboard.writeText(text).then(
+        () => toast('메시지 텍스트 복사됨'),
+        () => toast('복사 실패', true)
+      );
+    });
+  });
+  body.querySelectorAll('[data-action="regen"]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const m = findMembership(b.dataset.id);
+      const u = findUser(m.user_id); const c = findClub(m.club_id);
+      let token = genToken(u.name, c.name);
+      try {
+        const { data, error } = await sb.from('memberships').update({ token }).eq('id', m.id).select().single();
+        if (error) throw error;
+        Object.assign(m, data);
+        renderAdminMemberships(body);
+        toast('URL 재발급');
+      } catch (err) { toast('재발급 실패: ' + (err.message || err), true); }
+    });
+  });
+  body.querySelectorAll('[data-action="del-membership"]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const id = b.dataset.id;
+      if (!confirm('이 멤버십과 데이터를 삭제할까요?')) return;
+      try {
+        const { error } = await sb.from('memberships').delete().eq('id', id);
+        if (error) throw error;
+        invalidateCache();
+        await loadAll();
+        renderAdminMemberships(body);
+      } catch (err) { toast('삭제 실패: ' + (err.message || err), true); }
+    });
+  });
+}
+
+function renderAdminSettings(body) {
+  body.innerHTML =
+    '<div class="add-form">' +
+      '<div style="font-weight:500; margin-bottom:8px;">관리자 비밀번호</div>' +
+      '<div class="form-row"><label>새 비밀번호</label><input id="sf-admin" type="text" placeholder="(현재) ' + escapeHtml(cache.settings.admin_password || '') + '"></div>' +
+      '<div style="text-align:right; margin-top:6px;">' +
+        '<button class="primary-btn" id="sf-admin-save">저장</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="add-form">' +
+      '<div style="font-weight:500; margin-bottom:8px;">BYS 멤버 비밀번호 (모든 클럽 보기)</div>' +
+      '<div class="form-row"><label>새 비밀번호</label><input id="sf-member" type="text" placeholder="(현재) ' + escapeHtml(cache.settings.member_gate_password || '') + '"></div>' +
+      '<div style="text-align:right; margin-top:6px;">' +
+        '<button class="primary-btn" id="sf-member-save">저장</button>' +
+      '</div>' +
+    '</div>' +
+    '<div style="font-size:12px; color:var(--muted); padding: 12px 4px;">' +
+      '⚠ 처음에는 기본 비밀번호(<code>CHANGE-ME-ADMIN</code>, <code>CHANGE-ME-MEMBER</code>)로 되어 있어요. 꼭 바꿔주세요.' +
+    '</div>';
+
+  async function saveSetting(key, value) {
+    if (!value) return toast('비밀번호를 입력해주세요', true);
+    try {
+      const { error } = await sb.from('app_settings').upsert({ key, value }, { onConflict: 'key' });
+      if (error) throw error;
+      cache.settings[key] = value;
+      toast('저장됨');
+      renderAdminSettings(body);
+    } catch (err) { toast('저장 실패: ' + (err.message || err), true); }
+  }
+  body.querySelector('#sf-admin-save').addEventListener('click', () =>
+    saveSetting('admin_password', body.querySelector('#sf-admin').value.trim())
+  );
+  body.querySelector('#sf-member-save').addEventListener('click', () =>
+    saveSetting('member_gate_password', body.querySelector('#sf-member').value.trim())
+  );
+}
+
+// ============ Boot ============
+route();
+</script>
+</body>
+</html>
