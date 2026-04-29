@@ -54,12 +54,46 @@
   .save-state.show { opacity: 1; }
   .save-state.err { color: var(--err); }
 
-  .home h1 { font-size: 22px; margin: 12px 0 4px; }
+  .home h1 { font-size: 24px; margin: 12px 0 4px; font-weight: 600; }
   .home p.muted { color: var(--muted); margin-top: 0; font-size: 13px; }
-  .home-section { margin-top: 24px; }
+  .home-section { margin-top: 22px; }
   .home-section h2 {
     font-size: 11px; letter-spacing: 0.16em; color: var(--muted);
     margin: 0 0 8px; text-transform: uppercase; font-weight: 500;
+  }
+  .bys-intro {
+    font-size: 12px; color: var(--muted);
+    margin: 8px 0 0; line-height: 1.7;
+    border-left: 2px solid var(--border-strong);
+    padding: 2px 0 2px 12px;
+  }
+  .bys-intro b { color: var(--text); font-weight: 500; }
+  .welcome-line { font-size: 17px; font-weight: 500; margin: 30px 0 4px; }
+  .hashtags {
+    margin-top: 44px; text-align: center; padding: 14px 0 6px;
+  }
+  .hashtags span {
+    display: inline-block; padding: 4px 12px; margin: 2px;
+    background: var(--accent-soft); color: var(--accent-strong);
+    border-radius: 999px; font-size: 12px; font-weight: 500;
+  }
+  .lc-arrow { float: right; color: var(--muted); }
+  .link-card:hover .lc-arrow { color: var(--text); }
+
+  /* Modal */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.42);
+    z-index: 200; display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal {
+    background: white; border-radius: 12px; padding: 22px;
+    max-width: 420px; width: 100%; max-height: 90vh; overflow: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.18);
+  }
+  .modal h3 { margin: 0 0 14px; font-size: 16px; font-weight: 600; }
+  .modal-actions {
+    display: flex; gap: 6px; justify-content: flex-end; margin-top: 18px;
   }
   .link-card {
     display: block; padding: 12px 14px;
@@ -498,6 +532,38 @@ function toast(msg, isErr) {
   t._timer = setTimeout(() => t.classList.remove('show'), 1800);
 }
 
+// Modal helper. onSave returns false to keep modal open (validation fail).
+function showModal(title, bodyHtml, onSave, onMount) {
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML =
+    '<div class="modal">' +
+      '<h3>' + escapeHtml(title) + '</h3>' +
+      '<div class="modal-body">' + bodyHtml + '</div>' +
+      '<div class="modal-actions">' +
+        '<button class="ghost-btn" data-modal-cancel>취소</button>' +
+        '<button class="primary-btn" data-modal-save>저장</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(bg);
+  const close = () => bg.remove();
+  bg.addEventListener('click', (e) => { if (e.target === bg) close(); });
+  bg.querySelector('[data-modal-cancel]').addEventListener('click', close);
+  bg.querySelector('[data-modal-save]').addEventListener('click', async () => {
+    const r = await onSave(bg);
+    if (r !== false) close();
+  });
+  // ESC closes
+  const escHandler = (e) => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escHandler); } };
+  document.addEventListener('keydown', escHandler);
+  if (onMount) onMount(bg);
+  setTimeout(() => {
+    const first = bg.querySelector('input:not([type="date"]), textarea, select');
+    if (first) first.focus();
+  }, 40);
+  return bg;
+}
+
 // Theme
 function setTheme(color) {
   if (color) {
@@ -516,6 +582,29 @@ function memberGatePassed() { return sessionStorage.getItem('bys.memberGate') ==
 function adminGatePassed()  { return sessionStorage.getItem('bys.adminGate')  === '1'; }
 function passMemberGate()   { sessionStorage.setItem('bys.memberGate', '1'); }
 function passAdminGate()    { sessionStorage.setItem('bys.adminGate',  '1'); }
+
+// My tokens (persisted across sessions in localStorage)
+function getMyTokens() {
+  try { return JSON.parse(localStorage.getItem('bys.myTokens') || '[]'); }
+  catch (e) { return []; }
+}
+function addMyToken(t) {
+  if (!t) return;
+  const arr = getMyTokens();
+  if (!arr.includes(t)) {
+    arr.push(t);
+    try { localStorage.setItem('bys.myTokens', JSON.stringify(arr)); } catch(e){}
+  }
+}
+function removeMyToken(t) {
+  const arr = getMyTokens().filter(x => x !== t);
+  try { localStorage.setItem('bys.myTokens', JSON.stringify(arr)); } catch(e){}
+}
+function getMyMemberships() {
+  const tokens = getMyTokens();
+  // Filter to only tokens that still exist in DB
+  return cache.memberships.filter(m => tokens.includes(m.token));
+}
 
 // ============ Routing ============
 async function route() {
@@ -545,6 +634,9 @@ async function route() {
       setTheme();
       if (!memberGatePassed()) view = renderMemberGate();
       else view = renderAllClubs();
+    } else if (hash === '#/myclubs' || hash === '#/myclubs/') {
+      setTheme();
+      view = renderMyClubs();
     } else if (hash.startsWith('#/admin')) {
       setTheme();
       if (!adminGatePassed()) view = renderAdminGate();
@@ -582,30 +674,78 @@ window.addEventListener('hashchange', route);
 function renderHome() {
   const wrap = document.createElement('div');
   wrap.className = 'home';
-  const memberLinks = cache.memberships.map(m => {
-    const u = findUser(m.user_id), c = findClub(m.club_id);
-    if (!u || !c) return '';
-    return '<a class="link-card" href="#/t/' + escapeHtml(m.token) + '">' +
-      '<div><span class="lc-dot" style="background:' + c.color + '"></span>' +
-      '<b class="lc-name">' + escapeHtml(u.name) + '</b> — ' + escapeHtml(c.name) +
-      '<span class="lc-sub" style="display:inline; margin-left:6px">(' + escapeHtml(c.period) + ')</span></div>' +
-    '</a>';
-  }).join('') || '<div class="empty">아직 멤버가 없어요. 관리자 페이지에서 만들어주세요.</div>';
-  const clubLinks = cache.clubs.map(c =>
-    '<a class="link-card" href="#/club/' + c.id + '">' +
-      '<div><span class="lc-dot" style="background:' + c.color + '"></span>' +
-      '<b class="lc-name">' + escapeHtml(c.name) + '</b> 대시보드</div>' +
-      '<div class="lc-sub">' + escapeHtml(c.period) + ' · 멤버 ' + membershipsOfClub(c.id).length + '명 · 평균 ' + clubAvgPct(c.id) + '%</div>' +
-    '</a>').join('') || '<div class="empty">아직 클럽이 없어요.</div>';
-  wrap.innerHTML =
+
+  const myMs = getMyMemberships();
+  // Unique user names from my memberships (usually 1)
+  const myUserNames = [...new Set(
+    myMs.map(m => { const u = findUser(m.user_id); return u ? u.name : null; }).filter(Boolean)
+  )];
+
+  // Header (always shown)
+  let html =
     '<h1>BYS Club Daily Tracker</h1>' +
-    '<p class="muted">매일 한 번씩 체크하고, 같이 응원해요.</p>' +
-    '<div class="home-section"><h2>나의 트래커</h2>' + memberLinks + '</div>' +
-    '<div class="home-section"><h2>클럽 대시보드</h2>' + clubLinks + '</div>' +
-    '<div class="home-section"><h2>모두 함께</h2>' +
-      '<a class="link-card" href="#/all"><b>모든 클럽 보기 →</b><div class="lc-sub">우리 BYS 모든 클럽이 어떻게 가고 있는지</div></a>' +
-      '<a class="link-card" href="#/admin"><b>관리자</b><div class="lc-sub">사용자/클럽/멤버십 관리</div></a>' +
+    '<p class="bys-intro">' +
+      '함께 만드는 성장 커뮤니티, <b>BYS CLUB 4th</b><br>' +
+      ': 영어 실력은 물론, 루틴·취향·관심사·열정까지, 삶의 \'성장 리듬\'을 유지하도록 돕는 실천형 커뮤니티' +
+    '</p>';
+
+  if (myMs.length === 0) {
+    // First-time visitor
+    html +=
+      '<p class="muted" style="margin-top:32px;">매일 한 번씩 체크하고, 같이 응원해요.</p>' +
+      '<p class="muted" style="margin-top:8px;">받은 트래커 링크가 있다면 그 링크로 들어와 주세요.</p>';
+  } else {
+    // Returning member — has at least one saved token
+    const greeting = myUserNames.length === 1
+      ? '🌱 안녕하세요, ' + escapeHtml(myUserNames[0]) + '님!'
+      : '🌱 안녕하세요!';
+    html +=
+      '<div class="welcome-line">' + greeting + '</div>' +
+      '<p class="muted">매일 한 번씩 체크하고, 같이 응원해요.</p>' +
+      '<div class="home-section">';
+
+    // 1) 나의 트래커 (1개면 단순, 여러 개면 클럽별로)
+    if (myMs.length === 1) {
+      const m = myMs[0];
+      const c = findClub(m.club_id);
+      html += '<a class="link-card" href="#/t/' + escapeHtml(m.token) + '">' +
+        '<b class="lc-name">' + (c ? '<span class="lc-dot" style="background:' + c.color + '"></span>' : '') +
+        '나의 트래커</b><span class="lc-arrow">→</span>' +
+        (c ? '<div class="lc-sub" style="margin-left:16px">' + escapeHtml(c.name) + '</div>' : '') +
+      '</a>';
+    } else {
+      myMs.forEach(m => {
+        const c = findClub(m.club_id);
+        if (!c) return;
+        html += '<a class="link-card" href="#/t/' + escapeHtml(m.token) + '">' +
+          '<b class="lc-name"><span class="lc-dot" style="background:' + c.color + '"></span>' +
+          '나의 트래커 (' + escapeHtml(c.name) + ')</b><span class="lc-arrow">→</span>' +
+        '</a>';
+      });
+    }
+
+    // 2) 나의 클럽 보기
+    html += '<a class="link-card" href="#/myclubs">' +
+      '<b class="lc-name">나의 클럽 보기</b><span class="lc-arrow">→</span>' +
+      '<div class="lc-sub">내가 속한 클럽 멤버들의 진행 상황</div>' +
+    '</a>';
+
+    // 3) 모든 클럽 보기
+    html += '<a class="link-card" href="#/all">' +
+      '<b class="lc-name">모든 클럽 보기</b><span class="lc-arrow">→</span>' +
+      '<div class="lc-sub">우리 BYS 모든 클럽이 어떻게 가고 있는지</div>' +
+    '</a>';
+
+    html += '</div>';
+  }
+
+  // Hashtags (always at bottom)
+  html +=
+    '<div class="hashtags">' +
+      '<span>#함께</span> <span>#지속</span> <span>#루틴</span> <span>#성장</span>' +
     '</div>';
+
+  wrap.innerHTML = html;
   return wrap;
 }
 
@@ -619,6 +759,7 @@ function renderTracker(token) {
     return wrap;
   }
   passMemberGate(); // valid token = BYS member
+  addMyToken(token); // remember this device as belonging to this member
   const user = findUser(m.user_id);
   const club = findClub(m.club_id);
   setTheme(club.color);
@@ -840,6 +981,75 @@ function renderClubDash(clubId) {
   return wrap;
 }
 
+// ============ My Clubs (membership-token-based) ============
+function renderMyClubs() {
+  const wrap = document.createElement('div');
+  const myMs = getMyMemberships();
+  if (myMs.length === 0) {
+    wrap.innerHTML =
+      '<div class="all-clubs-header">' +
+        '<h1>나의 클럽 보기</h1>' +
+        '<div class="sub">아직 가입한 클럽이 없어요. 받은 트래커 링크로 한 번 들어와주세요.</div>' +
+      '</div>' +
+      '<div style="text-align:center; margin-top:24px">' +
+        '<a class="ghost-btn" href="#/">홈으로</a>' +
+      '</div>';
+    return wrap;
+  }
+  const myClubIds = [...new Set(myMs.map(m => m.club_id))];
+  const clubs = myClubIds.map(id => findClub(id)).filter(Boolean)
+    .sort((a, b) => clubAvgPct(b.id) - clubAvgPct(a.id));
+  const totalMembers = clubs.reduce((sum, c) => sum + membershipsOfClub(c.id).length, 0);
+  const overall = clubs.length
+    ? Math.round(clubs.reduce((a, c) => a + clubAvgPct(c.id), 0) / clubs.length)
+    : 0;
+
+  const myUserIds = new Set(myMs.map(m => m.user_id));
+
+  let body = clubs.map(c => {
+    const ms = membershipsOfClub(c.id).slice().sort((a, b) => membershipPct(b) - membershipPct(a));
+    const today = getTodayInfo(c);
+    const week = today.valid ? today.week : null;
+    const rows = ms.map(m => {
+      const u = findUser(m.user_id);
+      if (!u) return '';
+      const pct = membershipPct(m);
+      const note = week ? noteOf(m.id, week) : null;
+      const isMe = myUserIds.has(m.user_id);
+      return '<div class="mini-row"' + (isMe ? ' style="background:' + hexToRgba(c.color, 0.06) + '"' : '') + '>' +
+        '<div>' +
+          '<span class="name">' + escapeHtml(u.name) + (isMe ? ' <span style="font-size:10px; color:' + c.color + '">(나)</span>' : '') + '</span>' +
+          (note && note.text ? ' <span style="color:var(--muted); font-size:11px">· ' + escapeHtml(note.text) + '</span>' : '') +
+        '</div>' +
+        '<div class="bar"><i style="width:' + pct + '%; background:' + c.color + '"></i></div>' +
+        '<div class="pct-num">' + pct + '%</div>' +
+      '</div>';
+    }).join('') || '<div class="empty" style="padding:10px 0">멤버 없음</div>';
+    return '<div class="club-block">' +
+      '<div class="club-block-head" style="background:' + hexToRgba(c.color, 0.18) + '">' +
+        '<div>' +
+          '<h2>' + escapeHtml(c.name) + '</h2>' +
+          '<div class="sub">' + escapeHtml(c.period) + ' · 멤버 ' + ms.length + '명' +
+            (week ? ' · 현재 W' + week : '') + '</div>' +
+        '</div>' +
+        '<div class="pct" style="color:' + c.color + '">' + clubAvgPct(c.id) + '%</div>' +
+      '</div>' +
+      '<div class="club-block-body">' + rows + '</div>' +
+    '</div>';
+  }).join('');
+
+  wrap.innerHTML =
+    '<div class="all-clubs-header">' +
+      '<h1>나의 클럽</h1>' +
+      '<div class="sub">' + clubs.length + '개 클럽 · 멤버 ' + totalMembers + '명 · 평균 ' + overall + '%</div>' +
+    '</div>' +
+    body +
+    '<div style="text-align:center; margin-top:18px">' +
+      '<a class="ghost-btn" href="#/all">모든 BYS 클럽 보기 →</a>' +
+    '</div>';
+  return wrap;
+}
+
 // ============ All Clubs (gated) ============
 function renderAllClubs() {
   const wrap = document.createElement('div');
@@ -997,6 +1207,7 @@ function renderAdminClubs(body) {
             '<td>' + clubAvgPct(c.id) + '%</td>' +
             '<td class="actions">' +
               '<a class="ghost-btn" href="#/club/' + c.id + '">대시보드</a>' +
+              '<button class="ghost-btn" data-action="edit-club" data-id="' + c.id + '">수정</button>' +
               '<button class="ghost-btn" data-action="del-club" data-id="' + c.id + '">삭제</button>' +
             '</td>' +
           '</tr>'
@@ -1043,6 +1254,52 @@ function renderAdminClubs(body) {
       } catch (err) { toast('삭제 실패: ' + (err.message || err), true); }
     });
   });
+
+  body.querySelectorAll('[data-action="edit-club"]').forEach(b => {
+    b.addEventListener('click', () => {
+      const club = findClub(b.dataset.id);
+      if (!club) return;
+      const html =
+        '<div class="form-row"><label>이름</label><input id="ec-name" value="' + escapeHtml(club.name) + '"></div>' +
+        '<div class="form-row"><label>기간 라벨</label><input id="ec-period" value="' + escapeHtml(club.period) + '"></div>' +
+        '<div class="form-row"><label>설명</label><input id="ec-desc" value="' + escapeHtml(club.description) + '"></div>' +
+        '<div class="form-row"><label>시작일 (일요일)</label><input id="ec-start" type="date" value="' + escapeHtml(club.start_date) + '"></div>' +
+        '<div class="form-row"><label>컬러</label>' +
+          '<div class="color-row" id="ec-colors">' +
+            COLOR_PRESETS.map(cc =>
+              '<div class="color-swatch ' + (cc.value === club.color ? 'selected' : '') +
+              '" data-color="' + cc.value + '" style="background:' + cc.value + '" title="' + cc.name + '"></div>'
+            ).join('') +
+          '</div>' +
+        '</div>';
+      showModal('클럽 수정', html, async (modal) => {
+        const name = modal.querySelector('#ec-name').value.trim();
+        const period = modal.querySelector('#ec-period').value.trim();
+        const desc = modal.querySelector('#ec-desc').value.trim();
+        const start = modal.querySelector('#ec-start').value;
+        const sel = modal.querySelector('#ec-colors .selected');
+        const color = sel ? sel.dataset.color : club.color;
+        if (!name) { toast('이름을 입력해주세요', true); return false; }
+        if (!start) { toast('시작일을 선택해주세요', true); return false; }
+        try {
+          const { data, error } = await sb.from('clubs').update({
+            name, period, description: desc, start_date: start, color
+          }).eq('id', club.id).select().single();
+          if (error) throw error;
+          Object.assign(club, data);
+          toast('수정됨');
+          renderAdminClubs(body);
+        } catch (err) { toast('수정 실패: ' + (err.message || err), true); return false; }
+      }, (modal) => {
+        modal.querySelectorAll('#ec-colors .color-swatch').forEach(sw => {
+          sw.addEventListener('click', () => {
+            modal.querySelectorAll('#ec-colors .color-swatch').forEach(s => s.classList.remove('selected'));
+            sw.classList.add('selected');
+          });
+        });
+      });
+    });
+  });
 }
 
 function renderAdminUsers(body) {
@@ -1070,6 +1327,7 @@ function renderAdminUsers(body) {
               return c ? '<span class="color-dot" style="background:' + c.color + '"></span>' + escapeHtml(c.name) : '';
             }).join(' &nbsp; ') || '<span style="color:var(--muted-2)">없음</span>') + '</td>' +
             '<td class="actions">' +
+              '<button class="ghost-btn" data-action="edit-user" data-id="' + u.id + '">수정</button>' +
               '<button class="ghost-btn" data-action="del-user" data-id="' + u.id + '">삭제</button>' +
             '</td>' +
           '</tr>';
@@ -1100,6 +1358,34 @@ function renderAdminUsers(body) {
         await loadAll();
         renderAdminUsers(body);
       } catch (err) { toast('삭제 실패: ' + (err.message || err), true); }
+    });
+  });
+
+  body.querySelectorAll('[data-action="edit-user"]').forEach(b => {
+    b.addEventListener('click', () => {
+      const user = findUser(b.dataset.id);
+      if (!user) return;
+      const html =
+        '<div class="form-row"><label>이름</label><input id="eu-name" value="' + escapeHtml(user.name) + '"></div>' +
+        '<div class="form-row"><label>시간대</label>' +
+          '<select id="eu-tz">' +
+            TZ_OPTIONS.map(t => '<option' + (t === user.timezone ? ' selected' : '') + '>' + t + '</option>').join('') +
+          '</select>' +
+        '</div>';
+      showModal('사용자 수정', html, async (modal) => {
+        const name = modal.querySelector('#eu-name').value.trim();
+        const tz = modal.querySelector('#eu-tz').value;
+        if (!name) { toast('이름을 입력해주세요', true); return false; }
+        try {
+          const { data, error } = await sb.from('users').update({
+            name, timezone: tz
+          }).eq('id', user.id).select().single();
+          if (error) throw error;
+          Object.assign(user, data);
+          toast('수정됨');
+          renderAdminUsers(body);
+        } catch (err) { toast('수정 실패: ' + (err.message || err), true); return false; }
+      });
     });
   });
 }
@@ -1139,6 +1425,7 @@ function renderAdminMemberships(body) {
             '<td class="actions">' +
               '<a class="ghost-btn" href="#/t/' + escapeHtml(m.token) + '">열기</a>' +
               '<button class="ghost-btn" data-action="msg" data-id="' + m.id + '">카톡 텍스트</button>' +
+              '<button class="ghost-btn" data-action="edit-membership" data-id="' + m.id + '">수정</button>' +
               '<button class="ghost-btn" data-action="regen" data-id="' + m.id + '">URL 재생성</button>' +
               '<button class="ghost-btn" data-action="del-membership" data-id="' + m.id + '">삭제</button>' +
             '</td>' +
@@ -1215,6 +1502,39 @@ function renderAdminMemberships(body) {
         await loadAll();
         renderAdminMemberships(body);
       } catch (err) { toast('삭제 실패: ' + (err.message || err), true); }
+    });
+  });
+
+  body.querySelectorAll('[data-action="edit-membership"]').forEach(b => {
+    b.addEventListener('click', () => {
+      const m = findMembership(b.dataset.id);
+      if (!m) return;
+      const u = findUser(m.user_id), c = findClub(m.club_id);
+      const html =
+        '<div class="form-row"><label>사용자</label><div style="color:var(--muted)">' + escapeHtml(u ? u.name : '?') + '</div></div>' +
+        '<div class="form-row"><label>클럽</label><div style="color:var(--muted)">' + escapeHtml(c ? c.name : '?') + '</div></div>' +
+        '<div class="form-row"><label>URL 토큰</label><input id="em-token" value="' + escapeHtml(m.token) + '"></div>' +
+        '<div style="font-size:11px; color:var(--muted); padding: 6px 0 0; line-height:1.5">' +
+          '· 영문 소문자/숫자/한글/하이픈만 권장<br>' +
+          '· 토큰을 바꾸면 기존 링크는 더 이상 동작하지 않아요<br>' +
+          '· 자동으로 새 토큰을 만들고 싶으면 \'URL 재생성\' 버튼을 사용하세요' +
+        '</div>';
+      showModal('멤버십 수정', html, async (modal) => {
+        const token = modal.querySelector('#em-token').value.trim();
+        if (!token) { toast('토큰을 입력해주세요', true); return false; }
+        if (token === m.token) { toast('변경된 내용 없음'); return; }
+        if (cache.memberships.some(x => x.id !== m.id && x.token === token)) {
+          toast('이미 사용 중인 토큰이에요', true); return false;
+        }
+        try {
+          const { data, error } = await sb.from('memberships').update({ token })
+            .eq('id', m.id).select().single();
+          if (error) throw error;
+          Object.assign(m, data);
+          toast('수정됨');
+          renderAdminMemberships(body);
+        } catch (err) { toast('수정 실패: ' + (err.message || err), true); return false; }
+      });
     });
   });
 }
