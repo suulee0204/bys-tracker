@@ -362,6 +362,113 @@
   }
   .toast.show { opacity: 1; }
   .toast.err { background: var(--err); }
+
+  /* Leader page — compact 56-cell view */
+  .leader-wrap { padding: 0 4px; }
+  .leader-head { margin: 8px 4px 16px; }
+  .leader-head h1 { font-size: 22px; font-weight: 600; margin: 4px 0 6px; }
+  .leader-head .meta {
+    color: var(--muted); font-size: 13px;
+    display: flex; flex-wrap: wrap; gap: 14px;
+  }
+  .leader-head .meta b { color: var(--text); font-weight: 500; }
+  .leader-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+  }
+  table.leader-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 11px;
+    width: max-content;
+    min-width: 100%;
+  }
+  table.leader-table th, table.leader-table td {
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+    box-sizing: border-box;
+    text-align: center;
+  }
+  table.leader-table thead th {
+    height: 22px;
+    background: var(--card);
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.leader-table thead tr.day-row th {
+    height: 18px;
+    font-size: 9px;
+    color: var(--muted-2);
+    font-weight: 400;
+    border-bottom: 1px solid var(--border);
+  }
+  table.leader-table thead tr.day-row th.sun { color: #c0392b; }
+  table.leader-table th.wh { border-right: 1px solid var(--border); }
+  table.leader-table th.wh.cur { color: var(--accent-strong); font-weight: 600; }
+  table.leader-table th.dh { width: 14px; }
+  table.leader-table th.dh.sat { border-right: 1px solid var(--border); }
+  table.leader-table .lname {
+    position: sticky; left: 0;
+    background: var(--card);
+    padding: 0 10px;
+    height: 22px;
+    border-right: 1px solid var(--border);
+    text-align: left;
+    font-weight: 500;
+    z-index: 2;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 110px;
+    min-width: 100px;
+  }
+  table.leader-table .lpct {
+    position: sticky; right: 0;
+    background: var(--card);
+    height: 22px;
+    border-left: 1px solid var(--border);
+    font-weight: 500;
+    z-index: 2;
+    width: 50px; min-width: 50px;
+  }
+  table.leader-table thead .lname,
+  table.leader-table thead .lpct { z-index: 3; }
+  table.leader-table td.lc {
+    width: 14px;
+    height: 22px;
+    position: relative;
+  }
+  table.leader-table td.lc.sat { border-right: 1px solid var(--border); }
+  table.leader-table td.lc.weekend { background: rgba(0,0,0,0.015); }
+  table.leader-table td.lc.today { box-shadow: inset 0 0 0 1.5px var(--accent-strong); }
+  table.leader-table td.lc.editable { cursor: pointer; user-select: none; }
+  table.leader-table td.lc.editable:hover { background: var(--accent-soft); }
+  table.leader-table td.lc.editable:active { transform: scale(0.92); }
+  .leader-cell {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    background: rgba(0,0,0,0.07);
+    vertical-align: middle;
+  }
+  .leader-cell.done    { background: var(--accent-strong); }
+  .leader-cell.partial { background: transparent; border: 1.5px solid var(--accent-strong); width: 5px; height: 5px; }
+  .leader-cell.future  { background: rgba(0,0,0,0.025); }
+  table.leader-table tbody tr:hover .lname,
+  table.leader-table tbody tr:hover td { background: rgba(0,0,0,0.02); }
+  table.leader-table tbody tr:hover .lname { background: rgba(0,0,0,0.04); }
+  .leader-legend {
+    display: flex; gap: 16px; padding: 12px 4px 4px;
+    font-size: 11px; color: var(--muted); flex-wrap: wrap; align-items: center;
+  }
+  .leader-legend .lg { display: inline-flex; align-items: center; gap: 5px; }
+  @media (max-width: 720px) {
+    table.leader-table th.dh, table.leader-table td.lc { width: 12px; }
+    table.leader-table .lname { max-width: 88px; min-width: 80px; padding: 0 7px; }
+    table.leader-table .lpct { width: 42px; min-width: 42px; font-size: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -564,6 +671,52 @@ function showModal(title, bodyHtml, onSave, onMount) {
   return bg;
 }
 
+// ============ CSV helpers ============
+// Parses CSV text → array of arrays. Handles quoted fields with commas/newlines/escaped quotes.
+function parseCSV(text) {
+  if (!text) return [];
+  // Strip BOM
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i+1] === '"') { field += '"'; i++; }
+        else { inQuotes = false; }
+      } else { field += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { row.push(field); field = ''; }
+      else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && text[i+1] === '\n') i++;
+        row.push(field); rows.push(row); row = []; field = '';
+      } else { field += ch; }
+    }
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  // Trim and drop fully blank rows
+  return rows.map(r => r.map(s => s.trim())).filter(r => r.some(s => s !== ''));
+}
+// Convert array of arrays → CSV string. Quotes when needed. Adds BOM for Excel/Korean.
+function toCSV(rows) {
+  const esc = s => {
+    s = s == null ? '' : String(s);
+    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  };
+  return '\ufeff' + rows.map(r => r.map(esc).join(',')).join('\r\n');
+}
+function downloadCSV(filename, rows) {
+  const blob = new Blob([toCSV(rows)], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 100);
+}
+
 // Theme
 function setTheme(color) {
   if (color) {
@@ -630,6 +783,8 @@ async function route() {
       view = renderTracker(decodeURIComponent(hash.slice(4)));
     } else if (hash.startsWith('#/club/')) {
       view = renderClubDash(hash.slice(7));
+    } else if (hash.startsWith('#/leader/')) {
+      view = renderLeader(decodeURIComponent(hash.slice(9)));
     } else if (hash === '#/all' || hash === '#/all/') {
       setTheme();
       if (!memberGatePassed()) view = renderMemberGate();
@@ -929,6 +1084,181 @@ function renderTracker(token) {
 }
 
 // ============ Club Dashboard ============
+// ============ Leader page (per-club, token-protected) ============
+function renderLeader(token) {
+  const wrap = document.createElement('div');
+  wrap.className = 'leader-wrap';
+  const club = cache.clubs.find(c => c.leader_token && c.leader_token === token);
+  if (!club) {
+    setTheme();
+    wrap.innerHTML =
+      '<div class="empty" style="margin-top:30px;">' +
+        '리더 URL이 유효하지 않아요.<br>' +
+        '<span style="font-size:12px; color:var(--muted);">관리자에게 새 URL을 요청해주세요.</span><br>' +
+        '<a href="#/" style="font-size:13px;">홈으로</a>' +
+      '</div>';
+    return wrap;
+  }
+  setTheme(club.color);
+
+  const memberships = membershipsOfClub(club.id).slice().sort((a, b) => {
+    const ua = findUser(a.user_id), ub = findUser(b.user_id);
+    return (ua ? ua.name : '').localeCompare(ub ? ub.name : '');
+  });
+  const today = getTodayInfo(club);
+  const currentWeek = today.valid ? today.week : null;
+  const todayDay = today.valid ? today.day : null;
+  const DAY_LABELS = ['일','월','화','수','목','금','토'];
+
+  // Build header rows
+  let weekHeader = '<th class="lname"></th>';
+  for (let w = 1; w <= 8; w++) {
+    const cur = currentWeek === w ? ' cur' : '';
+    weekHeader += '<th class="wh' + cur + '" colspan="7">W' + w + '</th>';
+  }
+  weekHeader += '<th class="lpct">%</th>';
+
+  let dayHeader = '<th class="lname"></th>';
+  for (let w = 1; w <= 8; w++) {
+    for (let d = 0; d < 7; d++) {
+      const isSun = d === 0 ? ' sun' : '';
+      const isSat = d === 6 ? ' sat' : '';
+      dayHeader += '<th class="dh' + isSun + isSat + '">' + DAY_LABELS[d] + '</th>';
+    }
+  }
+  dayHeader += '<th class="lpct"></th>';
+
+  // Build member rows
+  const todayAbs = today.valid ? (today.week - 1) * 7 + today.day : -1;
+  function buildRowHtml(m, u) {
+    let cells = '';
+    for (let w = 1; w <= 8; w++) {
+      for (let d = 0; d < 7; d++) {
+        const ci = checkInOf(m.id, w, d);
+        const isToday = (currentWeek === w && todayDay === d) ? ' today' : '';
+        const isWeekend = (d === 0 || d === 6) ? ' weekend' : '';
+        const isSat = d === 6 ? ' sat' : '';
+        const cellAbs = (w - 1) * 7 + d;
+        const isFuture = today.valid && cellAbs > todayAbs;
+        const editable = today.valid && !isFuture; // past + today
+        let dotCls = '';
+        if (ci && (ci.state === 'done' || ci.state === 'partial')) dotCls = ci.state;
+        else if (isFuture) dotCls = 'future';
+        cells += '<td class="lc' + isToday + isWeekend + isSat + (editable ? ' editable' : '') + '"' +
+          (editable ? ' data-mid="' + m.id + '" data-w="' + w + '" data-d="' + d + '" title="클릭해서 변경"' : '') + '>' +
+          '<span class="leader-cell ' + dotCls + '"></span>' +
+          '</td>';
+      }
+    }
+    return '<td class="lname" title="' + escapeHtml(u.name) + '">' + escapeHtml(u.name) + '</td>' +
+      cells +
+      '<td class="lpct" data-mid-pct="' + m.id + '">' + membershipPct(m) + '%</td>';
+  }
+  const rowsHtml = memberships.map(m => {
+    const u = findUser(m.user_id);
+    if (!u) return '';
+    return '<tr data-row-mid="' + m.id + '">' + buildRowHtml(m, u) + '</tr>';
+  }).join('');
+
+  const tableHtml =
+    '<div class="leader-scroll"><table class="leader-table">' +
+      '<thead>' +
+        '<tr>' + weekHeader + '</tr>' +
+        '<tr class="day-row">' + dayHeader + '</tr>' +
+      '</thead>' +
+      '<tbody>' + (rowsHtml || '<tr><td colspan="58" style="padding:24px; text-align:center; color:var(--muted);">아직 멤버가 없어요.</td></tr>') + '</tbody>' +
+    '</table></div>';
+
+  wrap.innerHTML =
+    '<div class="leader-head" style="border-left: 3px solid ' + club.color + '; padding-left: 12px;">' +
+      '<h1>' + escapeHtml(club.name) + ' — 리더 뷰</h1>' +
+      '<div class="meta">' +
+        '<span><b>' + escapeHtml(club.period) + '</b></span>' +
+        '<span>멤버 <b>' + memberships.length + '</b>명</span>' +
+        (currentWeek ? '<span>현재 <b>W' + currentWeek + '</b></span>' : '<span style="color:var(--muted-2)">기간 외</span>') +
+        '<span>평균 <b>' + clubAvgPct(club.id) + '%</b></span>' +
+      '</div>' +
+    '</div>' +
+    tableHtml +
+    '<div class="leader-legend">' +
+      '<span class="lg"><span class="leader-cell done"></span> 완료</span>' +
+      '<span class="lg"><span class="leader-cell partial"></span> 절반</span>' +
+      '<span class="lg"><span class="leader-cell"></span> 미체크</span>' +
+      '<span class="lg"><span class="leader-cell future"></span> 미래(수정 불가)</span>' +
+      '<span class="lg" style="margin-left:auto; color:var(--muted-2);">' +
+        '※ 셀 클릭 → 빈칸 → 완료 → 절반 → 빈칸 순환' +
+      '</span>' +
+    '</div>';
+
+  // Cell click → cycle empty → done → partial → empty (only past + today)
+  wrap.addEventListener('click', async (e) => {
+    const cell = e.target.closest('td.lc.editable');
+    if (!cell) return;
+    const mid = cell.dataset.mid;
+    const w = parseInt(cell.dataset.w, 10);
+    const d = parseInt(cell.dataset.d, 10);
+    if (!mid || isNaN(w) || isNaN(d)) return;
+
+    const m = findMembership(mid);
+    if (!m) return;
+
+    const ci = checkInOf(mid, w, d);
+    const newState = nextState(ci ? ci.state : 'empty');
+
+    // Optimistic update
+    const prevCheckIns = cache.checkIns;
+    if (newState === 'empty') {
+      cache.checkIns = cache.checkIns.filter(c =>
+        !(c.membership_id === mid && c.week === w && c.day === d));
+    } else if (ci) {
+      ci.state = newState; ci.updated_at = new Date().toISOString();
+    } else {
+      cache.checkIns.push({
+        id: 'temp_' + Math.random().toString(36).slice(2, 9),
+        membership_id: mid, week: w, day: d, state: newState,
+        updated_at: new Date().toISOString()
+      });
+    }
+
+    // Update cell display
+    const span = cell.querySelector('.leader-cell');
+    span.className = 'leader-cell ' + (newState === 'empty' ? '' : newState);
+    // Update % column
+    const pctEl = wrap.querySelector('[data-mid-pct="' + mid + '"]');
+    if (pctEl) pctEl.textContent = membershipPct(m) + '%';
+
+    // Persist
+    try {
+      if (newState === 'empty') {
+        const { error } = await sb.from('check_ins').delete()
+          .eq('membership_id', mid).eq('week', w).eq('day', d);
+        if (error) throw error;
+      } else {
+        const { data, error } = await sb.from('check_ins').upsert({
+          membership_id: mid, week: w, day: d, state: newState,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'membership_id,week,day' }).select().single();
+        if (error) throw error;
+        // Replace temp with real
+        cache.checkIns = cache.checkIns.filter(c =>
+          !(c.membership_id === mid && c.week === w && c.day === d));
+        if (data) cache.checkIns.push(data);
+      }
+      toast('저장됨');
+    } catch (err) {
+      console.error(err);
+      cache.checkIns = prevCheckIns;
+      // Revert UI
+      const ciNow = checkInOf(mid, w, d);
+      span.className = 'leader-cell ' + (ciNow ? ciNow.state : '');
+      if (pctEl) pctEl.textContent = membershipPct(m) + '%';
+      toast('저장 실패: ' + (err.message || err), true);
+    }
+  });
+
+  return wrap;
+}
+
 function renderClubDash(clubId) {
   const wrap = document.createElement('div');
   const club = findClub(clubId);
@@ -1207,6 +1537,7 @@ function renderAdminClubs(body) {
             '<td>' + clubAvgPct(c.id) + '%</td>' +
             '<td class="actions">' +
               '<a class="ghost-btn" href="#/club/' + c.id + '">대시보드</a>' +
+              '<button class="ghost-btn" data-action="leader-url" data-id="' + c.id + '">리더 URL</button>' +
               '<button class="ghost-btn" data-action="edit-club" data-id="' + c.id + '">수정</button>' +
               '<button class="ghost-btn" data-action="del-club" data-id="' + c.id + '">삭제</button>' +
             '</td>' +
@@ -1300,6 +1631,76 @@ function renderAdminClubs(body) {
       });
     });
   });
+
+  // Leader URL: generate or show + copy + regenerate
+  body.querySelectorAll('[data-action="leader-url"]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const club = findClub(b.dataset.id);
+      if (!club) return;
+
+      async function ensureToken(forceNew) {
+        if (club.leader_token && !forceNew) return club.leader_token;
+        const tok = genLeaderToken(club.name);
+        try {
+          const { data, error } = await sb.from('clubs').update({ leader_token: tok })
+            .eq('id', club.id).select().single();
+          if (error) throw error;
+          Object.assign(club, data);
+          return tok;
+        } catch (err) {
+          if (err.message && err.message.indexOf('leader_token') >= 0) {
+            toast('Supabase에 leader_token 컬럼을 먼저 만들어주세요 (안내 참고)', true);
+          } else {
+            toast('리더 URL 발급 실패: ' + (err.message || err), true);
+          }
+          throw err;
+        }
+      }
+
+      let token;
+      try { token = await ensureToken(false); } catch (e) { return; }
+      const baseUrl = location.origin + location.pathname + '#/leader/' + token;
+
+      const html =
+        '<div style="font-size:12px; color:var(--muted); line-height:1.7; margin-bottom:10px;">' +
+          '· <b>' + escapeHtml(club.name) + '</b> 리더 전용 페이지 URL이에요<br>' +
+          '· 이 URL을 가진 사람은 클럽 멤버 전체의 진행 현황을 컴팩트하게 볼 수 있어요<br>' +
+          '· 리더 외에는 공유하지 마세요. 유출되면 \'재발급\'으로 새 URL을 만들 수 있어요' +
+        '</div>' +
+        '<div class="form-row"><label>URL</label><input id="lu-url" readonly value="' + escapeHtml(baseUrl) + '"></div>' +
+        '<div style="text-align:right; margin-top:10px;">' +
+          '<button class="ghost-btn" data-lu-regen>URL 재발급</button> ' +
+          '<button class="ghost-btn" data-lu-copy>복사</button> ' +
+          '<a class="ghost-btn" data-lu-open href="' + escapeHtml(baseUrl) + '" target="_blank">열기</a>' +
+        '</div>';
+
+      showModal('리더 URL — ' + club.name, html, async () => { /* save = no-op, just close */ }, (modal) => {
+        modal.querySelector('[data-lu-copy]').addEventListener('click', () => {
+          const v = modal.querySelector('#lu-url').value;
+          navigator.clipboard.writeText(v).then(
+            () => toast('리더 URL 복사됨'),
+            () => toast('복사 실패', true)
+          );
+        });
+        modal.querySelector('[data-lu-regen]').addEventListener('click', async () => {
+          if (!confirm('새 URL을 발급하면 기존 URL은 더 이상 동작하지 않아요. 계속할까요?')) return;
+          try {
+            const newTok = await ensureToken(true);
+            const newUrl = location.origin + location.pathname + '#/leader/' + newTok;
+            modal.querySelector('#lu-url').value = newUrl;
+            modal.querySelector('[data-lu-open]').setAttribute('href', newUrl);
+            toast('재발급 완료');
+          } catch (e) {}
+        });
+      });
+    });
+  });
+}
+
+function genLeaderToken(clubName) {
+  const base = (clubName || 'leader').replace(/\s+/g, '').replace(/[^a-zA-Z0-9가-힣-]/g, '').slice(0, 14);
+  const rand = Math.random().toString(36).slice(2, 10);
+  return ('lead-' + base + '-' + rand).toLowerCase();
 }
 
 function renderAdminUsers(body) {
@@ -1314,6 +1715,24 @@ function renderAdminUsers(body) {
         '<button class="primary-btn" id="uf-submit">생성</button>' +
       '</div>' +
     '</div>' +
+    '<details class="add-form" style="padding:14px 16px;">' +
+      '<summary style="font-weight:500; cursor:pointer;">+ CSV로 일괄 추가</summary>' +
+      '<div style="font-size:12px; color:var(--muted); padding:8px 0 4px; line-height:1.7;">' +
+        '· 형식: <code>이름,시간대,클럽이름</code> (한 줄에 한 명, 쉼표로 구분)<br>' +
+        '· 첫 줄에 헤더(이름,시간대,클럽이름)를 넣어도 자동으로 무시돼요<br>' +
+        '· <b>클럽이름은 이미 만들어둔 클럽과 정확히 일치해야 해요</b> (대소문자/공백 포함)<br>' +
+        '· 시간대 비우면 <code>Asia/Seoul</code>, 같은 사람·같은 클럽 중복은 건너뜀<br>' +
+        '· 엑셀에서 영역 복사 → 텍스트 에디터에 붙여넣기 → 저장(.csv) 으로 만들 수 있어요' +
+      '</div>' +
+      '<textarea id="ub-text" rows="6" placeholder="홍길동,Asia/Seoul,CEO의 책장&#10;김유진,Asia/Seoul,영어책 1챕터" ' +
+        'style="width:100%; min-height:120px; padding:10px 12px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; ' +
+        'font-size:12px; border:1px solid var(--border); border-radius:8px; box-sizing:border-box; resize:vertical;"></textarea>' +
+      '<div style="text-align:right; margin-top:10px;">' +
+        '<button class="ghost-btn" id="ub-template">샘플 채우기</button> ' +
+        '<button class="primary-btn" id="ub-submit">일괄 추가</button>' +
+      '</div>' +
+      '<div id="ub-result" style="margin-top:10px; font-size:12px; line-height:1.7;"></div>' +
+    '</details>' +
     '<table class="admin-table">' +
       '<thead><tr><th>이름</th><th>시간대</th><th>속한 클럽</th><th></th></tr></thead>' +
       '<tbody>' +
@@ -1346,6 +1765,97 @@ function renderAdminUsers(body) {
       renderAdminUsers(body);
       toast('사용자 생성됨');
     } catch (err) { toast('생성 실패: ' + (err.message || err), true); }
+  });
+
+  // Bulk add via CSV
+  const tplBtn = body.querySelector('#ub-template');
+  if (tplBtn) tplBtn.addEventListener('click', () => {
+    const sample = cache.clubs[0];
+    body.querySelector('#ub-text').value =
+      '이름,시간대,클럽이름\n' +
+      '홍길동,Asia/Seoul,' + (sample ? sample.name : '여기에 클럽이름') + '\n' +
+      '김유진,Asia/Seoul,' + (sample ? sample.name : '여기에 클럽이름');
+  });
+  const ubBtn = body.querySelector('#ub-submit');
+  if (ubBtn) ubBtn.addEventListener('click', async () => {
+    const text = body.querySelector('#ub-text').value;
+    const resultEl = body.querySelector('#ub-result');
+    resultEl.innerHTML = '';
+    if (!text.trim()) { toast('CSV 내용을 입력해주세요', true); return; }
+    const rows = parseCSV(text);
+    if (!rows.length) { toast('읽을 행이 없어요', true); return; }
+    // Skip header row if first cell looks like '이름' / 'name'
+    let startIdx = 0;
+    const h0 = (rows[0][0] || '').toLowerCase();
+    if (h0 === '이름' || h0 === 'name') startIdx = 1;
+
+    let created = 0, addedMembers = 0, skippedDup = 0;
+    const errors = [];
+
+    for (let i = startIdx; i < rows.length; i++) {
+      const r = rows[i];
+      const lineNo = i + 1;
+      const name = (r[0] || '').trim();
+      const tz = (r[1] || 'Asia/Seoul').trim() || 'Asia/Seoul';
+      const clubName = (r[2] || '').trim();
+      if (!name) { errors.push(lineNo + '행: 이름이 비어있어요'); continue; }
+      if (!clubName) { errors.push(lineNo + '행 (' + name + '): 클럽이름이 비어있어요'); continue; }
+      const club = cache.clubs.find(c => c.name === clubName);
+      if (!club) { errors.push(lineNo + '행 (' + name + '): 클럽 "' + clubName + '"을 찾을 수 없어요'); continue; }
+
+      try {
+        // Find existing user (by name+tz) or create
+        let user = cache.users.find(u => u.name === name && u.timezone === tz);
+        if (!user) {
+          const { data, error } = await sb.from('users').insert({ name, timezone: tz }).select().single();
+          if (error) throw error;
+          cache.users.push(data);
+          user = data;
+          created++;
+        }
+
+        // Skip if membership already exists
+        if (cache.memberships.some(m => m.user_id === user.id && m.club_id === club.id)) {
+          skippedDup++; continue;
+        }
+
+        // Generate token (retry on collision)
+        let token = genToken(user.name, club.name), tries = 0;
+        while (cache.memberships.some(m => m.token === token) && tries < 5) {
+          token = genToken(user.name, club.name); tries++;
+        }
+        const { data: mData, error: mErr } = await sb.from('memberships').insert({
+          user_id: user.id, club_id: club.id, token
+        }).select().single();
+        if (mErr) throw mErr;
+        cache.memberships.push(mData);
+        addedMembers++;
+      } catch (err) {
+        errors.push(lineNo + '행 (' + name + '): ' + (err.message || err));
+      }
+    }
+
+    let html = '<div style="color:var(--text);"><b>' +
+      '✓ 새 사용자 ' + created + '명, 멤버십 ' + addedMembers + '건 추가</b>' +
+      (skippedDup ? ' / 중복 ' + skippedDup + '건 건너뜀' : '') +
+      '</div>';
+    if (errors.length) {
+      html += '<div style="color:#c0392b; margin-top:6px;">⚠ 오류 ' + errors.length + '건:<br>' +
+        errors.slice(0, 20).map(e => '· ' + escapeHtml(e)).join('<br>') +
+        (errors.length > 20 ? '<br>… 외 ' + (errors.length - 20) + '건' : '') +
+        '</div>';
+    }
+    resultEl.innerHTML = html;
+
+    if (addedMembers > 0 || created > 0) {
+      toast('일괄 추가 완료');
+      renderAdminUsers(body);
+      // Re-show details + result after re-render
+      const det = body.querySelector('details');
+      if (det) det.open = true;
+      const res = body.querySelector('#ub-result');
+      if (res) res.innerHTML = html;
+    }
   });
   body.querySelectorAll('[data-action="del-user"]').forEach(b => {
     b.addEventListener('click', async () => {
@@ -1410,6 +1920,10 @@ function renderAdminMemberships(body) {
         '<button class="primary-btn" id="mf-submit">URL 발급</button>' +
       '</div>' +
     '</div>' +
+    '<div style="display:flex; justify-content:space-between; align-items:center; margin: 4px 4px 12px;">' +
+      '<div style="font-size:12px; color:var(--muted);">총 ' + cache.memberships.length + '건</div>' +
+      '<button class="ghost-btn" id="mm-export">URL 목록 CSV 다운로드</button>' +
+    '</div>' +
     '<table class="admin-table">' +
       '<thead><tr><th>사용자</th><th>클럽</th><th>URL</th><th>진행률</th><th></th></tr></thead>' +
       '<tbody>' +
@@ -1464,6 +1978,30 @@ function renderAdminMemberships(body) {
         () => toast('복사 실패 — 직접 선택해 복사해주세요', true)
       );
     });
+  });
+
+  // Export URL list as CSV
+  const expBtn = body.querySelector('#mm-export');
+  if (expBtn) expBtn.addEventListener('click', () => {
+    if (!cache.memberships.length) { toast('내보낼 멤버십이 없어요', true); return; }
+    const rows = [['이름', '시간대', '클럽', '기간', '토큰', 'URL', '진행률(%)']];
+    // Sort: club name → user name
+    const sorted = [...cache.memberships].sort((a, b) => {
+      const ca = findClub(a.club_id), cb = findClub(b.club_id);
+      const ua = findUser(a.user_id), ub = findUser(b.user_id);
+      const cn = (ca ? ca.name : '').localeCompare(cb ? cb.name : '');
+      if (cn) return cn;
+      return (ua ? ua.name : '').localeCompare(ub ? ub.name : '');
+    });
+    sorted.forEach(m => {
+      const u = findUser(m.user_id), c = findClub(m.club_id);
+      if (!u || !c) return;
+      const url = location.origin + location.pathname + '#/t/' + m.token;
+      rows.push([u.name, u.timezone || '', c.name, c.period || '', m.token, url, String(membershipPct(m))]);
+    });
+    const today = new Date().toISOString().slice(0, 10);
+    downloadCSV('bys-tracker-urls-' + today + '.csv', rows);
+    toast('CSV 다운로드 시작');
   });
   body.querySelectorAll('[data-action="msg"]').forEach(b => {
     b.addEventListener('click', () => {
