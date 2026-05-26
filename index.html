@@ -480,7 +480,21 @@
 // ============ Config ============
 const SUPABASE_URL = 'https://jiatcxdopzuedtawtxpt.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IrO9lYrNBbK4PxLvbuupbA_F4eHzdjW';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Custom fetch wrapper — keepalive ensures pending writes complete even if user
+// closes the tab or backgrounds the browser (critical for mobile reliability).
+// keepalive only takes effect when the page is unloading; harmless for reads.
+const _sbFetch = (url, opts) => {
+  const o = Object.assign({}, opts || {});
+  // Only set keepalive for small POST/PATCH/DELETE (writes). Skip for large reads.
+  const method = (o.method || 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD') {
+    o.keepalive = true;
+  }
+  return fetch(url, o);
+};
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  global: { fetch: _sbFetch },
+});
 
 const COLOR_PRESETS = [
   { name: '코랄',     value: '#E76F51' },
@@ -639,6 +653,77 @@ function toast(msg, isErr) {
   t._timer = setTimeout(() => t.classList.remove('show'), 1800);
 }
 
+// ============ Pending Save Queue (mobile reliability) ============
+// If a save fails (network drop, page closed mid-flight), we keep it in localStorage
+// and retry on next page load + when the tab becomes visible + when network returns.
+const PENDING_KEY = 'bys.pendingSaves';
+function pendingGet() {
+  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch { return []; }
+}
+function pendingSet(arr) {
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); } catch {}
+}
+// op = { type: 'check', membership_id, week, day, state (null = delete), ts }
+function pendingAdd(op) {
+  const q = pendingGet();
+  // Dedupe: latest write for the same cell wins
+  const filtered = q.filter(x => !(
+    x.type === op.type && x.membership_id === op.membership_id &&
+    x.week === op.week && x.day === op.day
+  ));
+  filtered.push(op);
+  pendingSet(filtered);
+}
+function pendingRemove(op) {
+  const q = pendingGet();
+  const filtered = q.filter(x => !(
+    x.type === op.type && x.membership_id === op.membership_id &&
+    x.week === op.week && x.day === op.day && x.ts === op.ts
+  ));
+  pendingSet(filtered);
+}
+let _flushing = false;
+async function pendingFlush() {
+  if (_flushing) return;
+  const q = pendingGet();
+  if (!q.length) return;
+  _flushing = true;
+  let anySuccess = false;
+  for (const op of q.slice()) {
+    try {
+      if (op.type === 'check') {
+        if (op.state === null) {
+          const { error } = await sb.from('check_ins').delete()
+            .eq('membership_id', op.membership_id).eq('week', op.week).eq('day', op.day);
+          if (error) throw error;
+        } else {
+          const { error } = await sb.from('check_ins').upsert({
+            membership_id: op.membership_id, week: op.week, day: op.day,
+            state: op.state, updated_at: op.ts
+          }, { onConflict: 'membership_id,week,day' });
+          if (error) throw error;
+        }
+      }
+      pendingRemove(op);
+      anySuccess = true;
+    } catch (e) {
+      console.warn('Pending save retry failed (will retry later):', op, e);
+      // Keep in queue — will retry next time
+    }
+  }
+  _flushing = false;
+  if (anySuccess) {
+    // Refresh cache and re-render so the UI matches what's on the server
+    invalidateCache();
+    try { await loadAll(); route(); } catch {}
+  }
+}
+// Trigger flush at safe moments
+window.addEventListener('online', pendingFlush);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') pendingFlush();
+});
+
 // Modal helper. onSave returns false to keep modal open (validation fail).
 function showModal(title, bodyHtml, onSave, onMount) {
   const bg = document.createElement('div');
@@ -771,6 +856,8 @@ async function route() {
     app.innerHTML = '<div class="empty">데이터 불러오기 실패: ' + escapeHtml(e.message || String(e)) + '</div>';
     return;
   }
+  // Background: retry any pending saves left from a previous session (mobile drop)
+  if (pendingGet().length) { setTimeout(pendingFlush, 100); }
   app.innerHTML = '';
   app.appendChild(renderTopbar());
 
@@ -1014,6 +1101,15 @@ function renderTracker(token) {
     const totalEl = wrap.querySelector('.tracker-meta .pct');
     if (totalEl) totalEl.textContent = membershipPct(m) + '%';
 
+    // Add to pending queue FIRST — if the save fails or the page closes,
+    // the next session will retry from the queue.
+    const ts = new Date().toISOString();
+    const op = {
+      type: 'check', membership_id: m.id, week, day,
+      state: newState === 'empty' ? null : newState, ts
+    };
+    pendingAdd(op);
+
     // persist
     try {
       if (newState === 'empty') {
@@ -1023,24 +1119,21 @@ function renderTracker(token) {
       } else {
         const { data, error } = await sb.from('check_ins').upsert({
           membership_id: m.id, week, day, state: newState,
-          updated_at: new Date().toISOString()
+          updated_at: ts
         }, { onConflict: 'membership_id,week,day' }).select().single();
         if (error) throw error;
         // replace temp record with real one
         cache.checkIns = cache.checkIns.filter(c => !(c.membership_id === m.id && c.week === week && c.day === day));
         if (data) cache.checkIns.push(data);
       }
+      pendingRemove(op); // success — remove from retry queue
       flashSave();
     } catch (err) {
       console.error(err);
-      cache.checkIns = prevCheckIns;
+      // Keep in queue — will retry on next page load / visibility change / online
       flashSave(true);
-      toast('저장 실패: ' + (err.message || err), true);
-      // re-render this row
-      const ci2 = checkInOf(m.id, week, day);
-      const st2 = ci2 ? ci2.state : 'empty';
-      btn.className = ['cell', st2, '', isTodayCell ? 'today' : ''].filter(Boolean).join(' ');
-      btn.innerHTML = cellSvg(st2, club);
+      // Note: we no longer revert UI here. The pending queue will sync it on next load.
+      toast('네트워크 불안정 — 다음 접속 시 자동 저장됩니다', true);
     }
   });
 
@@ -1227,6 +1320,14 @@ function renderLeader(token) {
     const pctEl = wrap.querySelector('[data-mid-pct="' + mid + '"]');
     if (pctEl) pctEl.textContent = membershipPct(m) + '%';
 
+    // Add to pending queue first (mobile-safe)
+    const ts = new Date().toISOString();
+    const op = {
+      type: 'check', membership_id: mid, week: w, day: d,
+      state: newState === 'empty' ? null : newState, ts
+    };
+    pendingAdd(op);
+
     // Persist
     try {
       if (newState === 'empty') {
@@ -1236,7 +1337,7 @@ function renderLeader(token) {
       } else {
         const { data, error } = await sb.from('check_ins').upsert({
           membership_id: mid, week: w, day: d, state: newState,
-          updated_at: new Date().toISOString()
+          updated_at: ts
         }, { onConflict: 'membership_id,week,day' }).select().single();
         if (error) throw error;
         // Replace temp with real
@@ -1244,15 +1345,12 @@ function renderLeader(token) {
           !(c.membership_id === mid && c.week === w && c.day === d));
         if (data) cache.checkIns.push(data);
       }
+      pendingRemove(op);
       toast('저장됨');
     } catch (err) {
       console.error(err);
-      cache.checkIns = prevCheckIns;
-      // Revert UI
-      const ciNow = checkInOf(mid, w, d);
-      span.className = 'leader-cell ' + (ciNow ? ciNow.state : '');
-      if (pctEl) pctEl.textContent = membershipPct(m) + '%';
-      toast('저장 실패: ' + (err.message || err), true);
+      // Keep in queue — will retry on next load / visibility / online
+      toast('네트워크 불안정 — 다음 접속 시 자동 저장됩니다', true);
     }
   });
 
