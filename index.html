@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>BYS Club Daily Tracker</title>
+<!-- BUILD v2.1 / 2026-05-26 / debug-panel -->
+<script>window.APP_VERSION = 'v2.1-디버그';</script>
 <style>
   :root {
     --bg: #ffffff;
@@ -480,21 +485,9 @@
 // ============ Config ============
 const SUPABASE_URL = 'https://jiatcxdopzuedtawtxpt.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IrO9lYrNBbK4PxLvbuupbA_F4eHzdjW';
-// Custom fetch wrapper — keepalive ensures pending writes complete even if user
-// closes the tab or backgrounds the browser (critical for mobile reliability).
-// keepalive only takes effect when the page is unloading; harmless for reads.
-const _sbFetch = (url, opts) => {
-  const o = Object.assign({}, opts || {});
-  // Only set keepalive for small POST/PATCH/DELETE (writes). Skip for large reads.
-  const method = (o.method || 'GET').toUpperCase();
-  if (method !== 'GET' && method !== 'HEAD') {
-    o.keepalive = true;
-  }
-  return fetch(url, o);
-};
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  global: { fetch: _sbFetch },
-});
+// Default Supabase client (no custom fetch — keepalive caused issues on iOS Safari)
+// Mobile reliability is handled via the pending queue (localStorage) below.
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const COLOR_PRESETS = [
   { name: '코랄',     value: '#E76F51' },
@@ -653,6 +646,36 @@ function toast(msg, isErr) {
   t._timer = setTimeout(() => t.classList.remove('show'), 1800);
 }
 
+// ============ On-screen Debug Log ============
+// Visible log to diagnose mobile issues. Tap 🐛 button bottom-right to see/hide.
+window._dbgLog = [];
+function dbg(msg) {
+  const t = new Date().toLocaleTimeString('ko-KR', { hour12: false }) + '.' + (Date.now() % 1000).toString().padStart(3, '0');
+  const entry = '[' + t + '] ' + msg;
+  window._dbgLog.unshift(entry);
+  if (window._dbgLog.length > 30) window._dbgLog.length = 30;
+  try { console.log(entry); } catch {}
+  const panel = document.getElementById('dbg-panel');
+  if (panel) panel.innerHTML = window._dbgLog.map(e => '<div>' + e.replace(/</g, '&lt;') + '</div>').join('');
+}
+function dbgInit() {
+  if (document.getElementById('dbg-btn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'dbg-btn';
+  btn.textContent = '🐛';
+  btn.style.cssText = 'position:fixed;bottom:12px;right:12px;width:44px;height:44px;border-radius:50%;border:none;background:#222;color:white;font-size:20px;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer;';
+  btn.onclick = () => {
+    const p = document.getElementById('dbg-panel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  };
+  document.body.appendChild(btn);
+  const panel = document.createElement('div');
+  panel.id = 'dbg-panel';
+  panel.style.cssText = 'display:none;position:fixed;bottom:64px;right:12px;left:12px;max-width:480px;margin-left:auto;max-height:60vh;overflow-y:auto;background:rgba(0,0,0,.92);color:#0f0;font:11px/1.4 monospace;padding:12px;border-radius:8px;z-index:9998;white-space:pre-wrap;word-break:break-all;';
+  document.body.appendChild(panel);
+  dbg('앱 시작 · 버전 ' + (window.APP_VERSION || '?'));
+}
+
 // ============ Pending Save Queue (mobile reliability) ============
 // If a save fails (network drop, page closed mid-flight), we keep it in localStorage
 // and retry on next page load + when the tab becomes visible + when network returns.
@@ -673,6 +696,7 @@ function pendingAdd(op) {
   ));
   filtered.push(op);
   pendingSet(filtered);
+  dbg('큐 추가: W' + op.week + 'D' + op.day + '=' + (op.state || 'empty') + ' (큐크기 ' + filtered.length + ')');
 }
 function pendingRemove(op) {
   const q = pendingGet();
@@ -688,6 +712,7 @@ async function pendingFlush() {
   const q = pendingGet();
   if (!q.length) return;
   _flushing = true;
+  dbg('🔁 큐 flush 시작 (' + q.length + '개)');
   let anySuccess = false;
   for (const op of q.slice()) {
     try {
@@ -706,14 +731,15 @@ async function pendingFlush() {
       }
       pendingRemove(op);
       anySuccess = true;
+      dbg('  ✅ flush 성공 W' + op.week + 'D' + op.day);
     } catch (e) {
+      dbg('  ❌ flush 실패 W' + op.week + 'D' + op.day + ': ' + (e.message || e));
       console.warn('Pending save retry failed (will retry later):', op, e);
-      // Keep in queue — will retry next time
     }
   }
   _flushing = false;
   if (anySuccess) {
-    // Refresh cache and re-render so the UI matches what's on the server
+    dbg('flush 완료 → 화면 새로고침');
     invalidateCache();
     try { await loadAll(); route(); } catch {}
   }
@@ -849,15 +875,25 @@ async function route() {
   const hash = location.hash || '#/';
   const app = document.getElementById('app');
   app.innerHTML = '<div class="loading">불러오는 중…</div>';
+  dbgInit();
   try {
+    dbg('데이터 로드 시작');
     await loadAll();
+    dbg('데이터 로드 완료 (체크인 ' + cache.checkIns.length + '개)');
   } catch (e) {
     console.error(e);
+    dbg('❌ 데이터 로드 실패: ' + (e.message || e));
     app.innerHTML = '<div class="empty">데이터 불러오기 실패: ' + escapeHtml(e.message || String(e)) + '</div>';
     return;
   }
   // Background: retry any pending saves left from a previous session (mobile drop)
-  if (pendingGet().length) { setTimeout(pendingFlush, 100); }
+  const pq = pendingGet();
+  if (pq.length) {
+    dbg('🔁 대기 큐 ' + pq.length + '개 발견 → 100ms 후 flush');
+    setTimeout(pendingFlush, 100);
+  } else {
+    dbg('대기 큐 비어있음');
+  }
   app.innerHTML = '';
   app.appendChild(renderTopbar());
 
@@ -907,6 +943,7 @@ function renderTopbar() {
     '<a href="#/admin">관리자</a>' +
     '<span class="right">' +
       '<span class="save-state">저장됨 · 방금</span>' +
+      '<span style="font-size:10px; color:#bbb; margin-left:8px;">' + (window.APP_VERSION || '?') + '</span>' +
     '</span>';
   return div;
 }
@@ -1108,10 +1145,12 @@ function renderTracker(token) {
       type: 'check', membership_id: m.id, week, day,
       state: newState === 'empty' ? null : newState, ts
     };
+    dbg('클릭: W' + week + 'D' + day + ' → ' + newState);
     pendingAdd(op);
 
     // persist
     try {
+      dbg('Supabase 호출 시작...');
       if (newState === 'empty') {
         const { error } = await sb.from('check_ins').delete()
           .eq('membership_id', m.id).eq('week', week).eq('day', day);
@@ -1127,13 +1166,14 @@ function renderTracker(token) {
         if (data) cache.checkIns.push(data);
       }
       pendingRemove(op); // success — remove from retry queue
+      dbg('✅ 저장 성공');
       flashSave();
     } catch (err) {
       console.error(err);
+      dbg('❌ 저장 실패: ' + (err.message || err));
       // Keep in queue — will retry on next page load / visibility change / online
       flashSave(true);
-      // Note: we no longer revert UI here. The pending queue will sync it on next load.
-      toast('네트워크 불안정 — 다음 접속 시 자동 저장됩니다', true);
+      toast('저장 실패 (큐 보관): ' + (err.message || err), true);
     }
   });
 
