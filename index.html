@@ -6,668 +6,750 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>BYS Club Daily Tracker</title>
-<!-- BUILD v2.2 / 2026-05-26 / fix-1000-row-limit -->
-<script>window.APP_VERSION = 'v2.2-한도해제';</script>
+<title>BYS Tracker</title>
+<!-- BUILD v3.0 / 2026-05-27 / leader-only -->
+<script>window.APP_VERSION = 'v3.0';</script>
 <style>
-  :root {
-    --bg: #ffffff;
-    --text: #2c2c2c;
-    --muted: #999;
-    --muted-2: #c8c8c8;
-    --border: #ececec;
-    --border-strong: #cfcfcf;
-    --row-line: #f1f1f1;
-    --bg-soft: #fafafa;
-    --accent: #E76F51;
-    --accent-soft: rgba(231, 111, 81, 0.22);
-    --accent-strong: rgba(231, 111, 81, 0.9);
-    --ok: #2A9D8F;
-    --err: #E63946;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", system-ui, sans-serif;
-    color: var(--text); background: var(--bg);
-    font-size: 15px; line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-  }
-  button { font: inherit; color: inherit; cursor: pointer; }
-  input, select { font: inherit; color: inherit; }
-  a { color: var(--text); }
+:root {
+  --bg: #ffffff;
+  --bg-soft: #fafafa;
+  --paper: #f4f4f4;
+  --text: #1a1a1a;
+  --text-soft: #333;
+  --muted: #888;
+  --muted-2: #b8b8b8;
+  --line: #e6e6e6;
+  --line-soft: #f0f0f0;
+  --primary: #2A9D8F;
+  --primary-soft: rgba(42, 157, 143, 0.10);
+  --danger: #e63946;
+  --success: #06d6a0;
+  --warn-bg: #fff8ee;
+  --sh-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --sh: 0 4px 12px rgba(0,0,0,0.08);
+  --sh-lg: 0 12px 32px rgba(0,0,0,0.16);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--bg-soft);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+  font-size: 16px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input, select, textarea {
+  font-family: inherit; font-size: inherit; color: inherit;
+}
+button { cursor: pointer; background: none; border: none; }
+a { color: inherit; text-decoration: none; }
 
-  .app { max-width: 760px; margin: 0 auto; padding: 18px 18px 80px; }
+/* Topbar */
+.topbar {
+  background: var(--bg); border-bottom: 1px solid var(--line-soft);
+  padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar .brand { font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
+.topbar .brand-mark { color: var(--primary); margin-right: 4px; }
+.topbar .right { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--muted-2); }
 
-  .topbar {
-    display: flex; gap: 4px; margin-bottom: 24px; padding-bottom: 10px;
-    border-bottom: 1px dashed var(--border);
-    font-size: 12px; color: var(--muted);
-    flex-wrap: wrap; align-items: center;
-  }
-  .topbar a {
-    color: var(--muted); text-decoration: none;
-    padding: 4px 8px; border-radius: 4px;
-  }
-  .topbar a:hover { background: var(--bg-soft); color: var(--text); }
-  .topbar .label { margin-right: 4px; font-weight: 500; color: #666; }
-  .topbar .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
-  .save-state {
-    font-size: 11px; color: var(--ok);
-    opacity: 0; transition: opacity 0.25s;
-  }
-  .save-state.show { opacity: 1; }
-  .save-state.err { color: var(--err); }
+.container { max-width: 900px; margin: 0 auto; padding: 24px 20px 100px; }
+@media (max-width: 640px) { .container { padding: 16px 14px 100px; } }
 
-  .home h1 { font-size: 24px; margin: 12px 0 4px; font-weight: 600; }
-  .home p.muted { color: var(--muted); margin-top: 0; font-size: 13px; }
-  .home-section { margin-top: 22px; }
-  .home-section h2 {
-    font-size: 11px; letter-spacing: 0.16em; color: var(--muted);
-    margin: 0 0 8px; text-transform: uppercase; font-weight: 500;
-  }
-  .bys-intro {
-    font-size: 12px; color: var(--muted);
-    margin: 8px 0 0; line-height: 1.7;
-    border-left: 2px solid var(--border-strong);
-    padding: 2px 0 2px 12px;
-  }
-  .bys-intro b { color: var(--text); font-weight: 500; }
-  .welcome-line { font-size: 17px; font-weight: 500; margin: 30px 0 4px; }
-  .hashtags {
-    margin-top: 44px; text-align: center; padding: 14px 0 6px;
-  }
-  .hashtags span {
-    display: inline-block; padding: 4px 12px; margin: 2px;
-    background: var(--accent-soft); color: var(--accent-strong);
-    border-radius: 999px; font-size: 12px; font-weight: 500;
-  }
-  .lc-arrow { float: right; color: var(--muted); }
-  .link-card:hover .lc-arrow { color: var(--text); }
+/* Common: Buttons */
+.btn {
+  padding: 12px 20px; border-radius: 10px;
+  font-weight: 600; font-size: 15px;
+  transition: transform .1s, opacity .15s;
+}
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: var(--primary); color: white; }
+.btn.primary:hover { opacity: 0.92; }
+.btn.ghost { background: var(--bg); color: var(--text); border: 1px solid var(--line); }
+.btn.ghost:hover { background: var(--paper); }
+.btn.danger { background: var(--danger); color: white; }
+.btn.small { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+.btn.icon { padding: 8px 12px; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 
-  /* Modal */
-  .modal-bg {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.42);
-    z-index: 200; display: flex; align-items: center; justify-content: center;
-    padding: 20px;
-  }
-  .modal {
-    background: white; border-radius: 12px; padding: 22px;
-    max-width: 420px; width: 100%; max-height: 90vh; overflow: auto;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.18);
-  }
-  .modal h3 { margin: 0 0 14px; font-size: 16px; font-weight: 600; }
-  .modal-actions {
-    display: flex; gap: 6px; justify-content: flex-end; margin-top: 18px;
-  }
-  .link-card {
-    display: block; padding: 12px 14px;
-    border: 1px solid var(--border); border-radius: 8px;
-    margin-bottom: 6px; text-decoration: none; color: var(--text);
-    background: white; transition: border-color 0.15s;
-  }
-  .link-card:hover { border-color: var(--text); }
-  .link-card .lc-name { font-weight: 500; }
-  .link-card .lc-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .link-card .lc-dot {
-    display: inline-block; width: 8px; height: 8px;
-    border-radius: 50%; margin-right: 8px; vertical-align: middle;
-  }
+/* Progress bar */
+.progress {
+  position: relative; height: 8px; background: var(--line-soft);
+  border-radius: 999px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; border-radius: 999px;
+  background: var(--primary); transition: width .3s;
+}
+.progress-wrap {
+  display: flex; align-items: center; gap: 10px;
+}
+.progress-wrap .progress { flex: 1; }
+.progress-wrap .pct {
+  font-weight: 700; font-size: 14px;
+  color: var(--text-soft); flex-shrink: 0;
+  min-width: 42px; text-align: right;
+}
 
-  .ghost-btn {
-    background: white; border: 1px solid var(--border-strong);
-    padding: 5px 11px; border-radius: 6px; font-size: 12px;
-    cursor: pointer; color: var(--text); text-decoration: none;
-    display: inline-block;
-  }
-  .ghost-btn:hover { border-color: var(--text); }
-  .ghost-btn + .ghost-btn { margin-left: 4px; }
+/* Loading + Empty */
+.loading, .empty, .error {
+  padding: 60px 20px; text-align: center;
+  color: var(--muted);
+}
+.error { color: var(--danger); }
 
-  .tracker-header { text-align: center; margin-bottom: 22px; }
-  .tracker-title { font-size: 11px; letter-spacing: 0.32em; color: var(--muted); margin-bottom: 14px; }
-  .tracker-club-line {
-    font-size: 19px; font-weight: 500; color: var(--text);
-    border-bottom: 1px solid var(--text); padding: 4px 14px 6px;
-    display: inline-block;
-  }
-  .tracker-meta { font-size: 12px; color: var(--muted); margin-top: 10px; }
-  .tracker-meta .pct { font-weight: 600; color: var(--accent-strong); font-size: 13px; }
-  .tracker-meta .today-pill {
-    display: inline-block; padding: 2px 8px; border-radius: 999px;
-    background: var(--accent-soft); color: var(--accent-strong);
-    font-size: 11px; font-weight: 500; margin-left: 6px;
-  }
-  .section-title {
-    text-align: center; font-size: 11px; letter-spacing: 0.32em;
-    color: var(--muted); padding: 14px 0;
-    border-top: 1px solid var(--border-strong);
-    border-bottom: 1px solid var(--border); margin-bottom: 6px;
-  }
-  .grid-table { padding: 0 4px; }
-  .day-headers, .week-row {
-    display: grid;
-    grid-template-columns: 32px minmax(70px, 1fr) repeat(7, 30px) 40px;
-    gap: 4px; align-items: center;
-  }
-  .day-headers { padding: 14px 0 6px; font-size: 11px; color: var(--muted); letter-spacing: 0.12em; }
-  .day-headers .dh { text-align: center; }
-  .week-row { padding: 9px 0; border-bottom: 1px solid var(--row-line); }
-  .week-row:last-of-type { border-bottom: none; }
-  .week-label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
-  .week-note {
-    border: none; border-bottom: 1px solid var(--border);
-    padding: 4px 6px; background: transparent; width: 100%;
-    font-size: 13px; color: var(--text); outline: none;
-    transition: border-color 0.15s;
-  }
-  .week-note::placeholder { color: var(--muted-2); }
-  .week-note:focus { border-bottom-color: var(--text); }
-  .week-pct {
-    text-align: right; font-size: 11px;
-    color: var(--muted); font-variant-numeric: tabular-nums;
-    padding-right: 4px;
-  }
-  .week-pct.has { color: var(--accent-strong); font-weight: 500; }
+/* ==== GATE (password screen) ==== */
+.gate {
+  min-height: 60vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 40px 20px; text-align: center;
+}
+.gate h1 { font-size: 28px; margin-bottom: 8px; letter-spacing: -0.02em; }
+.gate p { color: var(--muted); margin-bottom: 30px; }
+.gate input {
+  padding: 16px 20px; border: 1.5px solid var(--line);
+  border-radius: 12px; font-size: 20px;
+  width: 240px; text-align: center;
+  letter-spacing: 0.4em;
+}
+.gate input:focus { outline: none; border-color: var(--primary); }
+.gate .btn { margin-top: 16px; width: 240px; }
 
-  .cell {
-    width: 30px; height: 30px; border: none; background: transparent;
-    padding: 0; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.12s, transform 0.05s;
-    position: relative;
-  }
-  .cell:hover:not(:disabled) { background: var(--bg-soft); }
-  .cell:active:not(:disabled) { transform: scale(0.92); }
-  .cell.locked, .cell:disabled { cursor: not-allowed; opacity: 0.55; }
-  .cell.today::after {
-    content: ''; position: absolute; inset: -3px;
-    border: 1.5px solid var(--accent); border-radius: 50%;
-    pointer-events: none; opacity: 0.85;
-  }
-  .cell svg { width: 22px; height: 22px; display: block; }
+/* ==== ADMIN DASHBOARD ==== */
+.admin-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px; gap: 12px; flex-wrap: wrap;
+}
+.admin-header h1 {
+  font-size: 26px; font-weight: 800; letter-spacing: -0.02em;
+}
+.admin-header .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
 
-  @media (max-width: 520px) {
-    .app { padding: 14px 12px 80px; }
-    .day-headers, .week-row {
-      grid-template-columns: 24px minmax(50px, 1fr) repeat(7, 26px) 32px;
-      gap: 2px;
-    }
-    .cell { width: 26px; height: 26px; }
-    .cell svg { width: 18px; height: 18px; }
-    .tracker-club-line { font-size: 16px; }
-    .week-note { font-size: 12px; padding: 3px 4px; }
-    .week-label, .week-pct { font-size: 10px; }
-  }
+.clubs-list { display: flex; flex-direction: column; gap: 12px; }
 
-  .below-actions {
-    display: flex; justify-content: center; gap: 8px; margin-top: 18px; flex-wrap: wrap;
-  }
-  .tracker-footer {
-    text-align: center; margin-top: 32px;
-    font-size: 11px; letter-spacing: 0.16em; color: var(--muted-2);
-  }
-  .tracker-footer .brand { font-weight: 500; letter-spacing: 0.24em; }
-  .tracker-footer .tag { font-size: 10px; margin-top: 2px; opacity: 0.8; }
+.club-card {
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: 14px; overflow: hidden;
+  transition: box-shadow .15s;
+}
+.club-card:hover { box-shadow: var(--sh-sm); }
+.club-card.open { box-shadow: var(--sh); }
 
-  .dash-header {
-    border-radius: 10px; padding: 16px 18px;
-    background: var(--accent-soft); border: 1px solid var(--accent);
-    margin-bottom: 18px;
-  }
-  .dash-header h1 { margin: 0; font-size: 17px; font-weight: 500; }
-  .dash-header .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
-  .dash-header .big-pct { font-size: 30px; font-weight: 600; color: var(--accent-strong); margin-top: 6px; }
-  .member-row {
-    display: grid; grid-template-columns: 1fr auto;
-    gap: 12px; padding: 14px 4px; border-bottom: 1px solid var(--row-line);
-  }
-  .member-row:last-child { border-bottom: none; }
-  .member-name { font-weight: 500; }
-  .member-note {
-    font-size: 12px; color: #666; margin-top: 4px;
-    max-width: 380px; overflow: hidden;
-    text-overflow: ellipsis; white-space: nowrap;
-  }
-  .member-meta { font-size: 11px; color: var(--muted-2); margin-top: 2px; }
-  .member-stat { text-align: right; }
-  .member-stat .pct { font-size: 18px; font-weight: 600; color: var(--accent-strong); }
-  .member-stat .last { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .heatmap {
-    margin-top: 8px; display: grid;
-    grid-template-columns: repeat(7, 6px);
-    grid-auto-flow: row; gap: 2px; width: max-content;
-  }
-  .heatmap .h-dot {
-    width: 6px; height: 6px; border-radius: 1px;
-    background: var(--row-line);
-  }
-  .heatmap .h-dot.done { background: var(--accent-strong); }
-  .heatmap .h-dot.partial {
-    background: var(--accent-soft);
-    border: 1px solid var(--accent-strong);
-    box-sizing: border-box;
-  }
+.card-head {
+  padding: 16px 18px; display: flex; align-items: center; gap: 14px;
+  cursor: pointer; user-select: none;
+}
+.card-caret {
+  width: 20px; height: 20px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted-2); transition: transform .2s;
+  font-size: 12px;
+}
+.club-card.open .card-caret { transform: rotate(90deg); }
+.club-color {
+  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+  background: var(--primary);
+}
+.card-title { flex: 1; font-weight: 700; font-size: 16px; }
+.card-progress-mini {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.card-progress-mini .bar {
+  width: 60px; height: 6px; background: var(--line-soft);
+  border-radius: 999px; overflow: hidden;
+}
+.card-progress-mini .fill { height: 100%; background: var(--primary); }
+.card-progress-mini .pct-mini {
+  font-weight: 600; font-size: 13px; color: var(--text-soft);
+  min-width: 34px; text-align: right;
+}
 
-  /* All-clubs view */
-  .all-clubs-header {
-    margin-bottom: 18px;
-  }
-  .all-clubs-header h1 { font-size: 18px; margin: 4px 0; }
-  .all-clubs-header .sub { font-size: 12px; color: var(--muted); }
+.card-body {
+  display: none; padding: 4px 18px 18px;
+  border-top: 1px solid var(--line-soft);
+}
+.club-card.open .card-body { display: block; }
 
-  .club-block {
-    border: 1px solid var(--border); border-radius: 10px;
-    margin-bottom: 14px; overflow: hidden;
-  }
-  .club-block-head {
-    padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
-  }
-  .club-block-head h2 { margin: 0; font-size: 15px; font-weight: 500; }
-  .club-block-head .sub { font-size: 11px; color: rgba(0,0,0,0.55); margin-top: 2px; }
-  .club-block-head .pct { font-size: 22px; font-weight: 600; }
-  .club-block-body { padding: 6px 12px 14px; }
-  .mini-row {
-    display: grid; grid-template-columns: 1fr auto auto; gap: 10px;
-    padding: 6px 4px; align-items: center; font-size: 13px;
-    border-bottom: 1px solid var(--row-line);
-  }
-  .mini-row:last-child { border-bottom: none; }
-  .mini-row .name { font-weight: 500; }
-  .mini-row .bar {
-    width: 110px; height: 6px; border-radius: 3px;
-    background: var(--row-line); position: relative; overflow: hidden;
-  }
-  .mini-row .bar > i { display: block; height: 100%; border-radius: 3px; }
-  .mini-row .pct-num { font-size: 12px; color: var(--muted); width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+.info-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 8px 20px; margin-top: 14px;
+  font-size: 14px;
+}
+.info-grid .k { color: var(--muted); }
+.info-grid .v { color: var(--text); font-weight: 500; }
 
-  /* Admin */
-  .admin-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; flex-wrap: wrap; }
-  .admin-tab {
-    background: transparent; border: none; padding: 8px 14px;
-    font-size: 13px; color: var(--muted);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px; cursor: pointer; text-decoration: none;
-  }
-  .admin-tab.active { color: var(--text); border-bottom-color: var(--text); }
-  .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .admin-table th {
-    text-align: left; font-weight: 500; color: var(--muted);
-    padding: 6px 8px; border-bottom: 1px solid var(--border);
-    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
-  }
-  .admin-table td {
-    padding: 8px; border-bottom: 1px solid var(--row-line);
-    vertical-align: middle;
-  }
-  .admin-table tr:last-child td { border-bottom: none; }
-  .admin-table .actions { text-align: right; white-space: nowrap; }
-  .admin-table .url-pill {
-    font-family: ui-monospace, monospace; font-size: 11px;
-    color: var(--muted); background: var(--bg-soft);
-    padding: 3px 7px; border-radius: 4px; cursor: pointer;
-  }
-  .admin-table .url-pill:hover { color: var(--text); background: #f0f0f0; }
-  .color-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
-  .form-row { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: center; padding: 5px 0; }
-  .form-row label { color: var(--muted); font-size: 12px; }
-  .form-row input, .form-row select {
-    border: 1px solid var(--border-strong);
-    padding: 6px 8px; border-radius: 4px; width: 100%;
-    background: white; outline: none;
-  }
-  .form-row input:focus, .form-row select:focus { border-color: var(--text); }
-  .color-row { display: flex; gap: 6px; flex-wrap: wrap; }
-  .color-swatch {
-    width: 22px; height: 22px; border-radius: 4px;
-    border: 2px solid white; box-shadow: 0 0 0 1px var(--border-strong);
-    cursor: pointer;
-  }
-  .color-swatch.selected { box-shadow: 0 0 0 2px var(--text); }
-  .add-form {
-    background: var(--bg-soft); padding: 14px;
-    border-radius: 8px; margin-bottom: 16px;
-  }
-  .primary-btn {
-    background: var(--text); color: white; border: none;
-    padding: 7px 16px; border-radius: 5px; font-size: 13px; cursor: pointer;
-  }
-  .primary-btn:hover { background: #000; }
+.leader-url-box {
+  margin-top: 14px; padding: 10px 14px;
+  background: var(--bg-soft); border-radius: 8px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--muted);
+  overflow: hidden;
+}
+.leader-url-box .url {
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: ui-monospace, monospace; color: var(--text-soft);
+}
 
-  /* Gates (login forms) */
-  .gate-card {
-    max-width: 360px; margin: 60px auto;
-    border: 1px solid var(--border); border-radius: 10px; padding: 24px;
-    background: white;
-  }
-  .gate-card h2 { margin: 0 0 4px; font-size: 17px; }
-  .gate-card p { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
-  .gate-card input[type="password"] {
-    width: 100%; padding: 9px 12px; border: 1px solid var(--border-strong);
-    border-radius: 6px; outline: none; margin-bottom: 10px;
-  }
-  .gate-card input:focus { border-color: var(--text); }
-  .gate-card .err-msg { color: var(--err); font-size: 12px; margin-top: 4px; min-height: 14px; }
-  .gate-card .gate-actions { display: flex; gap: 6px; margin-top: 6px; }
-  .gate-card .gate-actions .primary-btn { flex: 1; }
+/* ==== LEADER VIEW ==== */
+.leader-topbar {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--muted); font-size: 14px;
+  margin-bottom: 20px;
+}
+.leader-topbar a { color: var(--primary); font-weight: 500; }
 
-  .empty {
-    text-align: center; color: var(--muted);
-    padding: 40px 0; font-size: 13px;
-  }
-  .loading {
-    text-align: center; color: var(--muted);
-    padding: 60px 0; font-size: 13px;
-  }
-  .toast {
-    position: fixed; bottom: 24px; left: 50%;
-    transform: translateX(-50%); background: var(--text);
-    color: white; padding: 10px 16px; border-radius: 6px;
-    font-size: 13px; opacity: 0;
-    transition: opacity 0.2s; pointer-events: none; z-index: 100;
-  }
-  .toast.show { opacity: 1; }
-  .toast.err { background: var(--err); }
+.leader-header {
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.leader-header .title-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 10px;
+}
+.leader-header .title-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+}
+.leader-header h1 {
+  font-size: 28px; font-weight: 800;
+  letter-spacing: -0.025em; line-height: 1.25;
+}
+.leader-header .meta {
+  color: var(--muted); font-size: 14px;
+  margin-bottom: 18px;
+}
+.leader-header .meta b { color: var(--text-soft); font-weight: 600; }
+.leader-header .progress-lg {
+  display: flex; align-items: center; gap: 14px;
+}
+.leader-header .progress-lg .progress {
+  flex: 1; height: 12px;
+}
+.leader-header .progress-lg .pct-big {
+  font-size: 22px; font-weight: 800;
+  color: var(--primary); min-width: 60px; text-align: right;
+}
+.leader-header .current-week-badge {
+  display: inline-block; padding: 4px 10px;
+  background: var(--primary-soft); color: var(--primary);
+  border-radius: 6px; font-size: 12px; font-weight: 700;
+  margin-left: 6px;
+}
 
-  /* Leader page — compact 56-cell view */
-  .leader-wrap { padding: 0 4px; }
-  .leader-head { margin: 8px 4px 16px; }
-  .leader-head h1 { font-size: 22px; font-weight: 600; margin: 4px 0 6px; }
-  .leader-head .meta {
-    color: var(--muted); font-size: 13px;
-    display: flex; flex-wrap: wrap; gap: 14px;
-  }
-  .leader-head .meta b { color: var(--text); font-weight: 500; }
-  .leader-scroll {
-    overflow-x: auto;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--card);
-  }
-  table.leader-table {
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 11px;
-    width: max-content;
-    min-width: 100%;
-  }
-  table.leader-table th, table.leader-table td {
-    padding: 0;
-    border-bottom: 1px solid var(--border);
-    box-sizing: border-box;
-    text-align: center;
-  }
-  table.leader-table thead th {
-    height: 22px;
-    background: var(--card);
-    color: var(--muted);
-    font-weight: 500;
-    font-size: 10px;
-    border-bottom: 1px solid var(--border);
-  }
-  table.leader-table thead tr.day-row th {
-    height: 18px;
-    font-size: 9px;
-    color: var(--muted-2);
-    font-weight: 400;
-    border-bottom: 1px solid var(--border);
-  }
-  table.leader-table thead tr.day-row th.sun { color: #c0392b; }
-  table.leader-table th.wh { border-right: 1px solid var(--border); }
-  table.leader-table th.wh.cur { color: var(--accent-strong); font-weight: 600; }
-  table.leader-table th.dh { width: 14px; }
-  table.leader-table th.dh.sat { border-right: 1px solid var(--border); }
-  table.leader-table .lname {
-    position: sticky; left: 0;
-    background: var(--card);
-    padding: 0 10px;
-    height: 22px;
-    border-right: 1px solid var(--border);
-    text-align: left;
-    font-weight: 500;
-    z-index: 2;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 110px;
-    min-width: 100px;
-  }
-  table.leader-table .lpct {
-    position: sticky; right: 0;
-    background: var(--card);
-    height: 22px;
-    border-left: 1px solid var(--border);
-    font-weight: 500;
-    z-index: 2;
-    width: 50px; min-width: 50px;
-  }
-  table.leader-table thead .lname,
-  table.leader-table thead .lpct { z-index: 3; }
-  table.leader-table td.lc {
-    width: 14px;
-    height: 22px;
-    position: relative;
-  }
-  table.leader-table td.lc.sat { border-right: 1px solid var(--border); }
-  table.leader-table td.lc.weekend { background: rgba(0,0,0,0.015); }
-  table.leader-table td.lc.today { box-shadow: inset 0 0 0 1.5px var(--accent-strong); }
-  table.leader-table td.lc.editable { cursor: pointer; user-select: none; }
-  table.leader-table td.lc.editable:hover { background: var(--accent-soft); }
-  table.leader-table td.lc.editable:active { transform: scale(0.92); }
-  .leader-cell {
-    display: inline-block;
-    width: 8px; height: 8px;
-    border-radius: 2px;
-    background: rgba(0,0,0,0.07);
-    vertical-align: middle;
-  }
-  .leader-cell.done    { background: var(--accent-strong); }
-  .leader-cell.partial { background: transparent; border: 1.5px solid var(--accent-strong); width: 5px; height: 5px; }
-  .leader-cell.future  { background: rgba(0,0,0,0.025); }
-  table.leader-table tbody tr:hover .lname,
-  table.leader-table tbody tr:hover td { background: rgba(0,0,0,0.02); }
-  table.leader-table tbody tr:hover .lname { background: rgba(0,0,0,0.04); }
-  .leader-legend {
-    display: flex; gap: 16px; padding: 12px 4px 4px;
-    font-size: 11px; color: var(--muted); flex-wrap: wrap; align-items: center;
-  }
-  .leader-legend .lg { display: inline-flex; align-items: center; gap: 5px; }
-  @media (max-width: 720px) {
-    table.leader-table th.dh, table.leader-table td.lc { width: 12px; }
-    table.leader-table .lname { max-width: 88px; min-width: 80px; padding: 0 7px; }
-    table.leader-table .lpct { width: 42px; min-width: 42px; font-size: 10px; }
-  }
+.toggle-row {
+  margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+  color: var(--muted); font-size: 14px;
+}
+.toggle-row label { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
+.toggle-row input { width: 18px; height: 18px; accent-color: var(--primary); }
+
+/* Week sections */
+.week-section { margin-bottom: 32px; }
+.week-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 10px 0 14px; border-bottom: 2px solid var(--line-soft);
+  margin-bottom: 12px; gap: 12px; flex-wrap: wrap;
+}
+.week-head .w-label {
+  font-size: 20px; font-weight: 800;
+  color: var(--text); letter-spacing: -0.02em;
+}
+.week-head .w-dates {
+  color: var(--muted); font-size: 13px;
+  margin-left: 10px;
+}
+.week-head .w-progress {
+  font-size: 13px; color: var(--muted-2);
+}
+.week-head .w-progress b { color: var(--text); font-weight: 700; }
+.week-head.is-current .w-label { color: var(--primary); }
+
+.member-block {
+  background: var(--bg); border: 1px solid var(--line-soft);
+  border-radius: 12px; padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.member-block .name-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.member-block .name { font-weight: 600; font-size: 15px; }
+.member-block .m-progress {
+  font-size: 12px; color: var(--muted);
+}
+.member-block .m-progress b { color: var(--text-soft); font-weight: 700; }
+
+.cell-row {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.cell {
+  flex: 0 0 auto;
+  min-width: 72px;
+  padding: 10px 6px;
+  background: var(--bg-soft);
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 4px;
+  transition: transform .1s, background .15s;
+}
+.cell:active { transform: scale(0.94); }
+.cell.done {
+  background: var(--primary); border-color: var(--primary); color: white;
+}
+.cell.done .cell-date { color: rgba(255,255,255,0.85); }
+.cell-value {
+  font-size: 20px; font-weight: 700; min-height: 24px;
+  display: flex; align-items: center;
+}
+.cell-value.circle::before {
+  content: ''; display: block; width: 22px; height: 22px;
+  border-radius: 50%; background: currentColor;
+}
+.cell-value.empty::before {
+  content: ''; display: block; width: 22px; height: 22px;
+  border-radius: 50%; border: 2px solid var(--muted-2);
+  background: transparent;
+}
+.cell-date {
+  font-size: 11px; font-weight: 500; color: var(--muted);
+  min-height: 14px;
+}
+
+@media (max-width: 640px) {
+  .cell { min-width: 62px; padding: 8px 4px; }
+  .cell-value { font-size: 18px; }
+}
+
+/* ==== MODAL ==== */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 1000; padding: 20px;
+  animation: fadeIn .15s;
+}
+@media (min-width: 640px) { .modal-bg { align-items: center; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--bg); border-radius: 20px 20px 0 0;
+  max-width: 480px; width: 100%;
+  max-height: 85vh; overflow-y: auto;
+  animation: slideUp .2s;
+}
+@media (min-width: 640px) { .modal { border-radius: 20px; } }
+@keyframes slideUp { from { transform: translateY(30px); } to { transform: translateY(0); } }
+.modal-header {
+  padding: 20px 20px 12px; display: flex; align-items: center; justify-content: space-between;
+}
+.modal-header h3 { font-size: 18px; font-weight: 700; }
+.modal-close {
+  color: var(--muted); font-size: 24px; padding: 4px 8px;
+}
+.modal-body { padding: 12px 20px 20px; }
+
+.form-group { margin-bottom: 18px; }
+.form-group label {
+  display: block; font-weight: 600; font-size: 14px;
+  color: var(--text-soft); margin-bottom: 8px;
+}
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 12px 14px;
+  border: 1.5px solid var(--line); border-radius: 10px;
+  font-size: 15px; background: var(--bg);
+  transition: border-color .15s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none; border-color: var(--primary);
+}
+.form-group .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.form-row { display: flex; gap: 10px; }
+.form-row > * { flex: 1; }
+
+.weekday-picker {
+  display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;
+}
+.weekday-picker label {
+  flex: 1; min-width: 40px;
+  padding: 10px 6px; border: 1.5px solid var(--line);
+  border-radius: 10px; text-align: center;
+  cursor: pointer; user-select: none;
+  font-weight: 600; font-size: 14px;
+  transition: all .15s;
+}
+.weekday-picker input { display: none; }
+.weekday-picker input:checked + span,
+.weekday-picker label.checked {
+  background: var(--primary); color: white; border-color: var(--primary);
+}
+
+.color-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.color-swatch {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid transparent; cursor: pointer;
+  transition: transform .1s;
+}
+.color-swatch.selected { border-color: var(--text); transform: scale(1.15); }
+
+.member-list {
+  margin-top: 10px; display: flex; flex-direction: column; gap: 6px;
+}
+.member-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: var(--bg-soft); border-radius: 8px;
+}
+.member-row .name { flex: 1; font-size: 14px; font-weight: 500; }
+.member-row .del {
+  color: var(--danger); font-size: 12px; padding: 4px 8px;
+}
+
+.type-selector {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px; margin-top: 4px;
+}
+.type-selector label {
+  padding: 12px 8px; text-align: center;
+  border: 1.5px solid var(--line); border-radius: 10px;
+  cursor: pointer; user-select: none;
+  transition: all .15s;
+}
+.type-selector input { display: none; }
+.type-selector label.checked {
+  background: var(--primary); color: white; border-color: var(--primary);
+}
+.type-selector .t-emoji { font-size: 20px; display: block; margin-bottom: 4px; }
+.type-selector .t-name { font-size: 13px; font-weight: 600; }
+
+.mode-toggle {
+  display: flex; gap: 8px; margin-top: 4px;
+}
+.mode-toggle label {
+  flex: 1; padding: 10px; text-align: center;
+  border: 1.5px solid var(--line); border-radius: 10px;
+  cursor: pointer; user-select: none; font-weight: 600;
+  transition: all .15s;
+}
+.mode-toggle input { display: none; }
+.mode-toggle label.checked {
+  background: var(--primary); color: white; border-color: var(--primary);
+}
+
+.number-input-large {
+  font-size: 32px; text-align: center; padding: 20px !important;
+  letter-spacing: -0.02em;
+}
+
+.count-controls {
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+  padding: 20px 0;
+}
+.count-btn {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--paper); font-size: 24px; font-weight: 700;
+  transition: transform .1s;
+}
+.count-btn:active { transform: scale(0.9); }
+.count-btn.primary { background: var(--primary); color: white; }
+.count-display {
+  font-size: 48px; font-weight: 800; min-width: 80px; text-align: center;
+  color: var(--text); letter-spacing: -0.02em;
+}
+
+.modal-actions {
+  padding: 14px 20px 20px; display: flex; gap: 10px;
+  border-top: 1px solid var(--line-soft);
+}
+.modal-actions .btn { flex: 1; }
+
+/* Toast */
+#toast {
+  position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); color: white;
+  padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 500;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+  max-width: 90vw; text-align: center; z-index: 1500;
+}
+#toast.show { opacity: 1; }
+#toast.err { background: var(--danger); }
+
+/* Save indicator */
+.save-state {
+  color: var(--muted-2); font-size: 12px;
+  opacity: 0; transition: opacity .15s;
+}
+.save-state.show { opacity: 1; }
+.save-state.err { color: var(--danger); }
+
+/* Debug panel */
+#dbg-btn {
+  position: fixed; bottom: 12px; right: 12px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #222; color: white; font-size: 20px;
+  z-index: 9999; box-shadow: var(--sh);
+}
+#dbg-panel {
+  display: none; position: fixed;
+  bottom: 66px; right: 12px; left: 12px;
+  max-width: 480px; margin-left: auto;
+  max-height: 60vh; overflow-y: auto;
+  background: rgba(0,0,0,0.92); color: #0f0;
+  font: 11px/1.4 ui-monospace, monospace;
+  padding: 12px; border-radius: 8px; z-index: 9998;
+  white-space: pre-wrap; word-break: break-all;
+}
 </style>
 </head>
 <body>
-<div class="app" id="app"><div class="loading">불러오는 중…</div></div>
-<div class="toast" id="toast"></div>
+
+<div class="topbar">
+  <div class="brand"><span class="brand-mark">●</span>BYS Tracker</div>
+  <div class="right">
+    <span class="save-state" id="save-state">저장됨</span>
+    <span>v3.0</span>
+  </div>
+</div>
+<div id="app"><div class="loading">불러오는 중…</div></div>
+<div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// ============ Config ============
+// ============ CONFIG ============
 const SUPABASE_URL = 'https://jiatcxdopzuedtawtxpt.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IrO9lYrNBbK4PxLvbuupbA_F4eHzdjW';
-// Default Supabase client (no custom fetch — keepalive caused issues on iOS Safari)
-// Mobile reliability is handled via the pending queue (localStorage) below.
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const COLOR_PRESETS = [
-  { name: '코랄',     value: '#E76F51' },
-  { name: '청록',     value: '#2A9D8F' },
-  { name: '머스타드', value: '#E9C46A' },
-  { name: '딥블루',   value: '#264653' },
-  { name: '라벤더',   value: '#9381FF' },
-  { name: '핑크',     value: '#EF476F' },
-];
-const TZ_OPTIONS = ['Asia/Seoul', 'America/Los_Angeles', 'America/New_York', 'Europe/London', 'Asia/Tokyo', 'Australia/Sydney'];
+const ADMIN_PW = '0909';
 
-// ============ Cache ============
-let cache = {
-  users: [], clubs: [], memberships: [], checkIns: [], weekNotes: [], settings: {},
-  loaded: false, loading: null
-};
+const COLOR_PRESETS = [
+  { name: '청록', value: '#2A9D8F' },
+  { name: '코랄', value: '#E76F51' },
+  { name: '겨자', value: '#E9C46A' },
+  { name: '오션', value: '#264653' },
+  { name: '라벤더', value: '#9381FF' },
+  { name: '핑크', value: '#EF476F' },
+  { name: '민트', value: '#06D6A0' },
+  { name: '스카이', value: '#118AB2' },
+];
+
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+
+// ============ CACHE ============
+let cache = { users: [], clubs: [], memberships: [], entries: [], loaded: false, loading: null };
 
 async function loadAll() {
   if (cache.loaded) return cache;
   if (cache.loading) return cache.loading;
   cache.loading = (async () => {
-    // IMPORTANT: Supabase default limit is 1000 rows per query.
-    // We explicitly request up to 50,000 rows to avoid silently truncating data.
-    // Without this, new check_ins beyond the first 1000 would appear missing on reload.
     const MAX_ROWS = 49999;
-    const [u, c, m, ci, wn, s] = await Promise.all([
+    const [u, c, m, e] = await Promise.all([
       sb.from('users').select('*').range(0, MAX_ROWS),
       sb.from('clubs').select('*').range(0, MAX_ROWS),
       sb.from('memberships').select('*').range(0, MAX_ROWS),
-      sb.from('check_ins').select('*').range(0, MAX_ROWS),
-      sb.from('week_notes').select('*').range(0, MAX_ROWS),
-      sb.from('app_settings').select('*').range(0, MAX_ROWS),
+      sb.from('entries').select('*').range(0, MAX_ROWS),
     ]);
-    if (u.error || c.error || m.error || ci.error || wn.error || s.error) {
-      const err = u.error || c.error || m.error || ci.error || wn.error || s.error;
-      throw err;
+    if (u.error || c.error || m.error || e.error) {
+      throw u.error || c.error || m.error || e.error;
     }
     cache.users = u.data || [];
     cache.clubs = c.data || [];
     cache.memberships = m.data || [];
-    cache.checkIns = ci.data || [];
-    cache.weekNotes = wn.data || [];
-    cache.settings = {};
-    (s.data || []).forEach(r => cache.settings[r.key] = r.value);
+    cache.entries = e.data || [];
     cache.loaded = true;
     cache.loading = null;
+    dbg('데이터 로드 완료 (클럽 ' + cache.clubs.length + ', 멤버 ' + cache.memberships.length + ', 항목 ' + cache.entries.length + ')');
     return cache;
   })();
   return cache.loading;
 }
 function invalidateCache() { cache.loaded = false; cache.loading = null; }
 
-// ============ Helpers ============
-function findUser(id)         { return cache.users.find(u => u.id === id); }
-function findClub(id)         { return cache.clubs.find(c => c.id === id); }
-function findMembership(id)   { return cache.memberships.find(m => m.id === id); }
-function membershipByToken(t) { return cache.memberships.find(m => m.token === t); }
-function membershipsOfClub(c) { return cache.memberships.filter(m => m.club_id === c); }
-function checkInsOf(mid)      { return cache.checkIns.filter(c => c.membership_id === mid); }
-function noteOf(mid, w)       { return cache.weekNotes.find(n => n.membership_id === mid && n.week === w); }
-function checkInOf(mid, w, d) { return cache.checkIns.find(c => c.membership_id === mid && c.week === w && c.day === d); }
+// ============ HELPERS ============
+function findUser(id) { return cache.users.find(u => u.id === id); }
+function findClub(id) { return cache.clubs.find(c => c.id === id); }
+function findMembership(id) { return cache.memberships.find(m => m.id === id); }
+function membershipsOfClub(clubId) { return cache.memberships.filter(m => m.club_id === clubId); }
+function clubByLeaderToken(t) { return cache.clubs.find(c => c.leader_token === t); }
+function entryOf(mid, week, slot) {
+  return cache.entries.find(e => e.membership_id === mid && e.week === week && e.slot === slot);
+}
+function entriesOfMembership(mid) { return cache.entries.filter(e => e.membership_id === mid); }
+function entriesOfClub(clubId) {
+  const mids = new Set(membershipsOfClub(clubId).map(m => m.id));
+  return cache.entries.filter(e => mids.has(e.membership_id));
+}
 
-function getTodayInfo(club) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const start = new Date(club.start_date + 'T00:00:00');
-  const days = Math.floor((today - start) / 86400000);
-  const week = Math.floor(days / 7) + 1;
-  const day = ((days % 7) + 7) % 7;
-  const valid = days >= 0 && week <= 8;
-  return { week, day, days, valid };
-}
-function isCellEditable(week, day, today) {
-  if (today.days < 0) return false;
-  const cellAbs = (week - 1) * 7 + day;
-  const todayAbs = (today.week - 1) * 7 + today.day;
-  if (cellAbs < 0 || cellAbs >= 56) return false;
-  return Math.abs(cellAbs - todayAbs) <= 1;
-}
-function nextState(s) {
-  if (s === 'empty' || !s) return 'done';
-  if (s === 'done') return 'partial';
-  return 'empty';
-}
-function stateScore(s) { return s === 'done' ? 1 : (s === 'partial' ? 0.5 : 0); }
-function membershipPct(m) {
-  const sum = checkInsOf(m.id).reduce((a, c) => a + stateScore(c.state), 0);
-  return Math.round((sum / 56) * 100);
-}
-function weekPct(m, w) {
-  let sum = 0;
-  for (let d = 0; d < 7; d++) {
-    const c = checkInOf(m.id, w, d);
-    if (c) sum += stateScore(c.state);
-  }
-  return Math.round((sum / 7) * 100);
-}
-function clubAvgPct(cid) {
-  const ms = membershipsOfClub(cid);
-  if (!ms.length) return 0;
-  return Math.round(ms.reduce((a, m) => a + membershipPct(m), 0) / ms.length);
-}
-function timeSince(ts) {
-  if (!ts) return '아직 없음';
-  const m = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
-  if (m < 1) return '방금';
-  if (m < 60) return m + '분 전';
-  const h = Math.floor(m / 60);
-  if (h < 24) return h + '시간 전';
-  return Math.floor(h / 24) + '일 전';
-}
-function lastCheckTs(mid) {
-  const cs = checkInsOf(mid);
-  if (!cs.length) return null;
-  return Math.max.apply(null, cs.map(c => new Date(c.updated_at).getTime() || 0));
-}
-function getRecentSunday(daysAgo) {
-  const d = new Date();
-  d.setHours(0,0,0,0);
-  d.setDate(d.getDate() - (daysAgo || 0));
-  d.setDate(d.getDate() - d.getDay());
-  return d.toISOString().slice(0, 10);
-}
 function escapeHtml(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-function hexToRgba(hex, a) {
-  const m = String(hex).match(/^#?([a-fA-F0-9]{6})$/);
-  if (!m) return hex;
-  const n = parseInt(m[1], 16);
-  return 'rgba(' + ((n>>16)&255) + ',' + ((n>>8)&255) + ',' + (n&255) + ',' + a + ')';
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+  ));
 }
 
-// SVG cells
-function svgEmpty()       { return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#cfcfcf" stroke-width="1.4"/></svg>'; }
-function svgDone(color)   { return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="' + color + '"/></svg>'; }
-function svgPartial(color){ return '<svg viewBox="0 0 24 24"><polygon points="12,3 22,21 2,21" fill="' + hexToRgba(color, 0.25) + '" stroke="' + color + '" stroke-width="1.6" stroke-linejoin="round"/></svg>'; }
-function cellSvg(state, club) {
-  if (state === 'done')    return svgDone(club.color);
-  if (state === 'partial') return svgPartial(club.color);
-  return svgEmpty();
+// Date helpers
+function parseDate(s) {
+  if (!s) return null;
+  if (s instanceof Date) return s;
+  const parts = String(s).split('-');
+  if (parts.length === 3) {
+    return new Date(Date.UTC(+parts[0], +parts[1]-1, +parts[2]));
+  }
+  return new Date(s);
+}
+function addDays(d, n) {
+  const r = new Date(d.getTime());
+  r.setUTCDate(r.getUTCDate() + n);
+  return r;
+}
+function dateStr(d) {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+function fmtDateShort(d) {
+  return (d.getUTCMonth() + 1) + '/' + d.getUTCDate();
+}
+function fmtDateWithDay(d) {
+  return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '(' + WEEKDAY_LABELS[d.getUTCDay()] + ')';
+}
+function fmtDateFull(d) {
+  return d.getUTCFullYear() + '년 ' + (d.getUTCMonth() + 1) + '월 ' + d.getUTCDate() + '일';
 }
 
-// Toast / save indicator
-let saveTimer = null;
-function flashSave(isErr) {
-  const e = document.querySelector('.save-state');
-  if (!e) return;
-  e.textContent = isErr ? '저장 실패' : '저장됨 · 방금';
-  e.classList.toggle('err', !!isErr);
-  e.classList.add('show');
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => e.classList.remove('show'), isErr ? 2400 : 1100);
+function getClubPeriod(club) {
+  const start = parseDate(club.start_date);
+  if (!start) return { start: null, end: null };
+  const end = addDays(start, 8 * 7 - 1);
+  return { start, end };
 }
+function getCurrentWeek(club) {
+  const start = parseDate(club.start_date);
+  if (!start) return null;
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const days = Math.floor((today - start) / 86400000);
+  if (days < 0) return null;
+  const week = Math.floor(days / 7) + 1;
+  if (week > 8) return null;
+  return week;
+}
+function getWeekRange(club, week) {
+  const start = parseDate(club.start_date);
+  const s = addDays(start, (week - 1) * 7);
+  const e = addDays(s, 6);
+  return { start: s, end: e };
+}
+
+// Slot date: fixed mode calculates from weekday, freeform uses stored entry date
+function getSlotDate(club, week, slot, entry) {
+  if (club.frequency_mode === 'fixed' && club.fixed_days && club.fixed_days.length) {
+    const range = getWeekRange(club, week);
+    const sorted = [...club.fixed_days].sort((a,b) => a - b);
+    const dow = sorted[slot];
+    if (dow === undefined) return null;
+    const startDow = range.start.getUTCDay();
+    const offset = (dow - startDow + 7) % 7;
+    return addDays(range.start, offset);
+  }
+  return entry && entry.date ? parseDate(entry.date) : null;
+}
+
+// Progress
+function hasValue(entry) {
+  if (!entry || !entry.value) return false;
+  const v = entry.value;
+  if (v.state === 'done') return true;
+  if (typeof v.n === 'number' && !isNaN(v.n)) return true;
+  if (typeof v.count === 'number' && v.count > 0) return true;
+  return false;
+}
+function membershipProgress(membership, club) {
+  const total = 8 * (club.frequency_per_week || 7);
+  const filled = entriesOfMembership(membership.id).filter(hasValue).length;
+  return { filled, total, pct: total ? Math.round(filled / total * 100) : 0 };
+}
+function membershipWeekProgress(membership, club, week) {
+  const total = club.frequency_per_week || 7;
+  const filled = cache.entries.filter(e =>
+    e.membership_id === membership.id && e.week === week && hasValue(e)
+  ).length;
+  return { filled, total, pct: total ? Math.round(filled / total * 100) : 0 };
+}
+function clubProgress(club) {
+  const memberships = membershipsOfClub(club.id);
+  if (!memberships.length) return { filled: 0, total: 0, pct: 0 };
+  const total = memberships.length * 8 * (club.frequency_per_week || 7);
+  const filled = entriesOfClub(club.id).filter(hasValue).length;
+  return { filled, total, pct: total ? Math.round(filled / total * 100) : 0 };
+}
+function clubWeekProgress(club, week) {
+  const memberships = membershipsOfClub(club.id);
+  const total = memberships.length * (club.frequency_per_week || 7);
+  const mids = new Set(memberships.map(m => m.id));
+  const filled = cache.entries.filter(e =>
+    mids.has(e.membership_id) && e.week === week && hasValue(e)
+  ).length;
+  return { filled, total, pct: total ? Math.round(filled / total * 100) : 0 };
+}
+
+// Token gen
+function slug(s) {
+  return String(s || '').toLowerCase()
+    .replace(/[^a-z0-9가-힣]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 20) || 'club';
+}
+function randomToken(len) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let s = '';
+  for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+function genLeaderToken(clubName) {
+  return 'lead-' + slug(clubName) + '-' + randomToken(8);
+}
+function genMemberToken() { return 't' + randomToken(12); }
+
+// ============ TOAST + SAVE STATE ============
+let toastTimer, saveStateTimer;
 function toast(msg, isErr) {
   const t = document.getElementById('toast');
+  if (!t) return;
   t.textContent = msg;
   t.classList.toggle('err', !!isErr);
   t.classList.add('show');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.classList.remove('show'), 1800);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function flashSave(isErr) {
+  const el = document.getElementById('save-state');
+  if (!el) return;
+  el.textContent = isErr ? '저장 실패' : '저장됨';
+  el.classList.toggle('err', !!isErr);
+  el.classList.add('show');
+  clearTimeout(saveStateTimer);
+  saveStateTimer = setTimeout(() => el.classList.remove('show'), isErr ? 2500 : 1200);
 }
 
-// ============ On-screen Debug Log ============
-// Visible log to diagnose mobile issues. Tap 🐛 button bottom-right to see/hide.
+// ============ DEBUG PANEL ============
 window._dbgLog = [];
 function dbg(msg) {
-  const t = new Date().toLocaleTimeString('ko-KR', { hour12: false }) + '.' + (Date.now() % 1000).toString().padStart(3, '0');
+  const t = new Date().toLocaleTimeString('ko-KR', { hour12: false });
   const entry = '[' + t + '] ' + msg;
   window._dbgLog.unshift(entry);
-  if (window._dbgLog.length > 30) window._dbgLog.length = 30;
+  if (window._dbgLog.length > 40) window._dbgLog.length = 40;
   try { console.log(entry); } catch {}
   const panel = document.getElementById('dbg-panel');
-  if (panel) panel.innerHTML = window._dbgLog.map(e => '<div>' + e.replace(/</g, '&lt;') + '</div>').join('');
+  if (panel) panel.innerHTML = window._dbgLog.map(e => '<div>' + escapeHtml(e) + '</div>').join('');
 }
 function dbgInit() {
   if (document.getElementById('dbg-btn')) return;
   const btn = document.createElement('button');
   btn.id = 'dbg-btn';
   btn.textContent = '🐛';
-  btn.style.cssText = 'position:fixed;bottom:12px;right:12px;width:44px;height:44px;border-radius:50%;border:none;background:#222;color:white;font-size:20px;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer;';
   btn.onclick = () => {
     const p = document.getElementById('dbg-panel');
     p.style.display = p.style.display === 'none' ? 'block' : 'none';
@@ -675,38 +757,31 @@ function dbgInit() {
   document.body.appendChild(btn);
   const panel = document.createElement('div');
   panel.id = 'dbg-panel';
-  panel.style.cssText = 'display:none;position:fixed;bottom:64px;right:12px;left:12px;max-width:480px;margin-left:auto;max-height:60vh;overflow-y:auto;background:rgba(0,0,0,.92);color:#0f0;font:11px/1.4 monospace;padding:12px;border-radius:8px;z-index:9998;white-space:pre-wrap;word-break:break-all;';
   document.body.appendChild(panel);
   dbg('앱 시작 · 버전 ' + (window.APP_VERSION || '?'));
 }
 
-// ============ Pending Save Queue (mobile reliability) ============
-// If a save fails (network drop, page closed mid-flight), we keep it in localStorage
-// and retry on next page load + when the tab becomes visible + when network returns.
-const PENDING_KEY = 'bys.pendingSaves';
+// ============ PENDING SAVE QUEUE ============
+const PENDING_KEY = 'bys.v3.pending';
 function pendingGet() {
   try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch { return []; }
 }
 function pendingSet(arr) {
   try { localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); } catch {}
 }
-// op = { type: 'check', membership_id, week, day, state (null = delete), ts }
 function pendingAdd(op) {
   const q = pendingGet();
-  // Dedupe: latest write for the same cell wins
   const filtered = q.filter(x => !(
-    x.type === op.type && x.membership_id === op.membership_id &&
-    x.week === op.week && x.day === op.day
+    x.membership_id === op.membership_id && x.week === op.week && x.slot === op.slot
   ));
   filtered.push(op);
   pendingSet(filtered);
-  dbg('큐 추가: W' + op.week + 'D' + op.day + '=' + (op.state || 'empty') + ' (큐크기 ' + filtered.length + ')');
+  dbg('큐 추가: W' + op.week + 'S' + op.slot + ' (큐 ' + filtered.length + ')');
 }
 function pendingRemove(op) {
   const q = pendingGet();
   const filtered = q.filter(x => !(
-    x.type === op.type && x.membership_id === op.membership_id &&
-    x.week === op.week && x.day === op.day && x.ts === op.ts
+    x.membership_id === op.membership_id && x.week === op.week && x.slot === op.slot && x.ts === op.ts
   ));
   pendingSet(filtered);
 }
@@ -720,1545 +795,866 @@ async function pendingFlush() {
   let anySuccess = false;
   for (const op of q.slice()) {
     try {
-      if (op.type === 'check') {
-        if (op.state === null) {
-          const { error } = await sb.from('check_ins').delete()
-            .eq('membership_id', op.membership_id).eq('week', op.week).eq('day', op.day);
-          if (error) throw error;
-        } else {
-          const { error } = await sb.from('check_ins').upsert({
-            membership_id: op.membership_id, week: op.week, day: op.day,
-            state: op.state, updated_at: op.ts
-          }, { onConflict: 'membership_id,week,day' });
-          if (error) throw error;
-        }
+      if (op.action === 'delete') {
+        const { error } = await sb.from('entries').delete()
+          .eq('membership_id', op.membership_id).eq('week', op.week).eq('slot', op.slot);
+        if (error) throw error;
+      } else {
+        const { error } = await sb.from('entries').upsert({
+          membership_id: op.membership_id, week: op.week, slot: op.slot,
+          date: op.date, value: op.value, updated_at: op.ts
+        }, { onConflict: 'membership_id,week,slot' });
+        if (error) throw error;
       }
       pendingRemove(op);
       anySuccess = true;
-      dbg('  ✅ flush 성공 W' + op.week + 'D' + op.day);
     } catch (e) {
-      dbg('  ❌ flush 실패 W' + op.week + 'D' + op.day + ': ' + (e.message || e));
-      console.warn('Pending save retry failed (will retry later):', op, e);
+      dbg('  ❌ flush 실패 W' + op.week + 'S' + op.slot + ': ' + (e.message || e));
     }
   }
   _flushing = false;
   if (anySuccess) {
-    dbg('flush 완료 → 화면 새로고침');
     invalidateCache();
     try { await loadAll(); route(); } catch {}
   }
 }
-// Trigger flush at safe moments
 window.addEventListener('online', pendingFlush);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') pendingFlush();
 });
 
-// Modal helper. onSave returns false to keep modal open (validation fail).
-function showModal(title, bodyHtml, onSave, onMount) {
+// ============ MODAL ============
+function showModal(title, bodyHtml, options) {
+  options = options || {};
   const bg = document.createElement('div');
   bg.className = 'modal-bg';
   bg.innerHTML =
     '<div class="modal">' +
-      '<h3>' + escapeHtml(title) + '</h3>' +
-      '<div class="modal-body">' + bodyHtml + '</div>' +
-      '<div class="modal-actions">' +
-        '<button class="ghost-btn" data-modal-cancel>취소</button>' +
-        '<button class="primary-btn" data-modal-save>저장</button>' +
+      '<div class="modal-header">' +
+        '<h3>' + escapeHtml(title) + '</h3>' +
+        '<button class="modal-close" data-close>×</button>' +
       '</div>' +
+      '<div class="modal-body">' + bodyHtml + '</div>' +
+      (options.actions !== false ?
+        '<div class="modal-actions">' +
+          '<button class="btn ghost" data-cancel>' + (options.cancelText || '취소') + '</button>' +
+          '<button class="btn primary" data-save>' + (options.saveText || '저장') + '</button>' +
+        '</div>' : '') +
     '</div>';
   document.body.appendChild(bg);
   const close = () => bg.remove();
   bg.addEventListener('click', (e) => { if (e.target === bg) close(); });
-  bg.querySelector('[data-modal-cancel]').addEventListener('click', close);
-  bg.querySelector('[data-modal-save]').addEventListener('click', async () => {
-    const r = await onSave(bg);
-    if (r !== false) close();
-  });
-  // ESC closes
+  bg.querySelector('[data-close]').addEventListener('click', close);
+  const cancelBtn = bg.querySelector('[data-cancel]');
+  const saveBtn = bg.querySelector('[data-save]');
+  if (cancelBtn) cancelBtn.addEventListener('click', close);
+  if (saveBtn && options.onSave) {
+    saveBtn.addEventListener('click', async () => {
+      const r = await options.onSave(bg);
+      if (r !== false) close();
+    });
+  }
   const escHandler = (e) => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escHandler); } };
   document.addEventListener('keydown', escHandler);
-  if (onMount) onMount(bg);
-  setTimeout(() => {
-    const first = bg.querySelector('input:not([type="date"]), textarea, select');
-    if (first) first.focus();
-  }, 40);
-  return bg;
+  if (options.onMount) options.onMount(bg);
+  return { modal: bg, close };
 }
 
-// ============ CSV helpers ============
-// Parses CSV text → array of arrays. Handles quoted fields with commas/newlines/escaped quotes.
-function parseCSV(text) {
-  if (!text) return [];
-  // Strip BOM
-  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-  const rows = [];
-  let row = [], field = '', inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (text[i+1] === '"') { field += '"'; i++; }
-        else { inQuotes = false; }
-      } else { field += ch; }
-    } else {
-      if (ch === '"') { inQuotes = true; }
-      else if (ch === ',') { row.push(field); field = ''; }
-      else if (ch === '\n' || ch === '\r') {
-        if (ch === '\r' && text[i+1] === '\n') i++;
-        row.push(field); rows.push(row); row = []; field = '';
-      } else { field += ch; }
-    }
-  }
-  if (field !== '' || row.length) { row.push(field); rows.push(row); }
-  // Trim and drop fully blank rows
-  return rows.map(r => r.map(s => s.trim())).filter(r => r.some(s => s !== ''));
-}
-// Convert array of arrays → CSV string. Quotes when needed. Adds BOM for Excel/Korean.
-function toCSV(rows) {
-  const esc = s => {
-    s = s == null ? '' : String(s);
-    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-    return s;
-  };
-  return '\ufeff' + rows.map(r => r.map(esc).join(',')).join('\r\n');
-}
-function downloadCSV(filename, rows) {
-  const blob = new Blob([toCSV(rows)], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click();
-  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 100);
-}
-
-// Theme
-function setTheme(color) {
-  if (color) {
-    document.documentElement.style.setProperty('--accent', color);
-    document.documentElement.style.setProperty('--accent-soft', hexToRgba(color, 0.22));
-    document.documentElement.style.setProperty('--accent-strong', hexToRgba(color, 0.9));
-  } else {
-    document.documentElement.style.setProperty('--accent', '#E76F51');
-    document.documentElement.style.setProperty('--accent-soft', 'rgba(231, 111, 81, 0.22)');
-    document.documentElement.style.setProperty('--accent-strong', 'rgba(231, 111, 81, 0.9)');
-  }
-}
-
-// Gates
-function memberGatePassed() { return sessionStorage.getItem('bys.memberGate') === '1'; }
-function adminGatePassed()  { return sessionStorage.getItem('bys.adminGate')  === '1'; }
-function passMemberGate()   { sessionStorage.setItem('bys.memberGate', '1'); }
-function passAdminGate()    { sessionStorage.setItem('bys.adminGate',  '1'); }
-
-// My tokens (persisted across sessions in localStorage)
-function getMyTokens() {
-  try { return JSON.parse(localStorage.getItem('bys.myTokens') || '[]'); }
-  catch (e) { return []; }
-}
-function addMyToken(t) {
-  if (!t) return;
-  const arr = getMyTokens();
-  if (!arr.includes(t)) {
-    arr.push(t);
-    try { localStorage.setItem('bys.myTokens', JSON.stringify(arr)); } catch(e){}
-  }
-}
-function removeMyToken(t) {
-  const arr = getMyTokens().filter(x => x !== t);
-  try { localStorage.setItem('bys.myTokens', JSON.stringify(arr)); } catch(e){}
-}
-function getMyMemberships() {
-  const tokens = getMyTokens();
-  // Filter to only tokens that still exist in DB
-  return cache.memberships.filter(m => tokens.includes(m.token));
-}
-
-// ============ Routing ============
+// ============ ROUTING ============
 async function route() {
   const hash = location.hash || '#/';
   const app = document.getElementById('app');
   app.innerHTML = '<div class="loading">불러오는 중…</div>';
   dbgInit();
   try {
-    dbg('데이터 로드 시작');
     await loadAll();
-    dbg('데이터 로드 완료 (체크인 ' + cache.checkIns.length + '개)');
   } catch (e) {
     console.error(e);
-    dbg('❌ 데이터 로드 실패: ' + (e.message || e));
-    app.innerHTML = '<div class="empty">데이터 불러오기 실패: ' + escapeHtml(e.message || String(e)) + '</div>';
+    dbg('❌ 로드 실패: ' + (e.message || e));
+    app.innerHTML = '<div class="error">데이터 로드 실패: ' + escapeHtml(e.message || String(e)) + '</div>';
     return;
   }
-  // Background: retry any pending saves left from a previous session (mobile drop)
   const pq = pendingGet();
   if (pq.length) {
-    dbg('🔁 대기 큐 ' + pq.length + '개 발견 → 100ms 후 flush');
+    dbg('🔁 대기 큐 ' + pq.length + '개 → flush');
     setTimeout(pendingFlush, 100);
-  } else {
-    dbg('대기 큐 비어있음');
   }
-  app.innerHTML = '';
-  app.appendChild(renderTopbar());
 
   let view;
   try {
-    if (hash === '#/' || hash === '#') {
-      setTheme();
-      view = renderHome();
-    } else if (hash.startsWith('#/t/')) {
-      view = renderTracker(decodeURIComponent(hash.slice(4)));
-    } else if (hash.startsWith('#/club/')) {
-      view = renderClubDash(hash.slice(7));
-    } else if (hash.startsWith('#/leader/')) {
+    if (hash.startsWith('#/leader/')) {
       view = renderLeader(decodeURIComponent(hash.slice(9)));
-    } else if (hash === '#/all' || hash === '#/all/') {
-      setTheme();
-      if (!memberGatePassed()) view = renderMemberGate();
-      else view = renderAllClubs();
-    } else if (hash === '#/myclubs' || hash === '#/myclubs/') {
-      setTheme();
-      view = renderMyClubs();
-    } else if (hash.startsWith('#/admin')) {
-      setTheme();
-      if (!adminGatePassed()) view = renderAdminGate();
-      else view = renderAdmin(hash.slice(7).replace(/^\//, ''));
     } else {
-      setTheme();
-      view = renderHome();
+      view = adminGatePassed() ? renderAdmin() : renderAdminGate();
     }
   } catch (e) {
     console.error(e);
     view = document.createElement('div');
-    view.className = 'empty';
+    view.className = 'error';
     view.textContent = '오류: ' + (e.message || String(e));
   }
+
+  app.innerHTML = '';
   app.appendChild(view);
   window.scrollTo(0, 0);
 }
-
-function renderTopbar() {
-  const div = document.createElement('div');
-  div.className = 'topbar';
-  div.innerHTML =
-    '<span class="label">BYS</span>' +
-    '<a href="#/">홈</a>' +
-    '<a href="#/all">모든 클럽</a>' +
-    '<a href="#/admin">관리자</a>' +
-    '<span class="right">' +
-      '<span class="save-state">저장됨 · 방금</span>' +
-      '<span style="font-size:10px; color:#bbb; margin-left:8px;">' + (window.APP_VERSION || '?') + '</span>' +
-    '</span>';
-  return div;
-}
 window.addEventListener('hashchange', route);
 
-// ============ Home ============
-function renderHome() {
-  const wrap = document.createElement('div');
-  wrap.className = 'home';
-
-  const myMs = getMyMemberships();
-  // Unique user names from my memberships (usually 1)
-  const myUserNames = [...new Set(
-    myMs.map(m => { const u = findUser(m.user_id); return u ? u.name : null; }).filter(Boolean)
-  )];
-
-  // Header (always shown)
-  let html =
-    '<h1>BYS Club Daily Tracker</h1>' +
-    '<p class="bys-intro">' +
-      '함께 만드는 성장 커뮤니티, <b>BYS CLUB 4th</b><br>' +
-      ': 영어 실력은 물론, 루틴·취향·관심사·열정까지, 삶의 \'성장 리듬\'을 유지하도록 돕는 실천형 커뮤니티' +
-    '</p>';
-
-  if (myMs.length === 0) {
-    // First-time visitor
-    html +=
-      '<p class="muted" style="margin-top:32px;">매일 한 번씩 체크하고, 같이 응원해요.</p>' +
-      '<p class="muted" style="margin-top:8px;">받은 트래커 링크가 있다면 그 링크로 들어와 주세요.</p>';
-  } else {
-    // Returning member — has at least one saved token
-    const greeting = myUserNames.length === 1
-      ? '🌱 안녕하세요, ' + escapeHtml(myUserNames[0]) + '님!'
-      : '🌱 안녕하세요!';
-    html +=
-      '<div class="welcome-line">' + greeting + '</div>' +
-      '<p class="muted">매일 한 번씩 체크하고, 같이 응원해요.</p>' +
-      '<div class="home-section">';
-
-    // 1) 나의 트래커 (1개면 단순, 여러 개면 클럽별로)
-    if (myMs.length === 1) {
-      const m = myMs[0];
-      const c = findClub(m.club_id);
-      html += '<a class="link-card" href="#/t/' + escapeHtml(m.token) + '">' +
-        '<b class="lc-name">' + (c ? '<span class="lc-dot" style="background:' + c.color + '"></span>' : '') +
-        '나의 트래커</b><span class="lc-arrow">→</span>' +
-        (c ? '<div class="lc-sub" style="margin-left:16px">' + escapeHtml(c.name) + '</div>' : '') +
-      '</a>';
-    } else {
-      myMs.forEach(m => {
-        const c = findClub(m.club_id);
-        if (!c) return;
-        html += '<a class="link-card" href="#/t/' + escapeHtml(m.token) + '">' +
-          '<b class="lc-name"><span class="lc-dot" style="background:' + c.color + '"></span>' +
-          '나의 트래커 (' + escapeHtml(c.name) + ')</b><span class="lc-arrow">→</span>' +
-        '</a>';
-      });
-    }
-
-    // 2) 나의 클럽 보기
-    html += '<a class="link-card" href="#/myclubs">' +
-      '<b class="lc-name">나의 클럽 보기</b><span class="lc-arrow">→</span>' +
-      '<div class="lc-sub">내가 속한 클럽 멤버들의 진행 상황</div>' +
-    '</a>';
-
-    // 3) 모든 클럽 보기
-    html += '<a class="link-card" href="#/all">' +
-      '<b class="lc-name">모든 클럽 보기</b><span class="lc-arrow">→</span>' +
-      '<div class="lc-sub">우리 BYS 모든 클럽이 어떻게 가고 있는지</div>' +
-    '</a>';
-
-    html += '</div>';
-  }
-
-  // Hashtags (always at bottom)
-  html +=
-    '<div class="hashtags">' +
-      '<span>#함께</span> <span>#지속</span> <span>#루틴</span> <span>#성장</span>' +
-    '</div>';
-
-  wrap.innerHTML = html;
-  return wrap;
+// ============ ADMIN GATE ============
+function adminGatePassed() {
+  return sessionStorage.getItem('bys.v3.adminOk') === '1';
 }
+function passAdmin() { sessionStorage.setItem('bys.v3.adminOk', '1'); }
 
-// ============ Tracker ============
-function renderTracker(token) {
-  const wrap = document.createElement('div');
-  const m = membershipByToken(token);
-  if (!m) {
-    setTheme();
-    wrap.innerHTML = '<div class="empty">트래커를 찾을 수 없습니다. <a href="#/">홈으로</a></div>';
-    return wrap;
-  }
-  passMemberGate(); // valid token = BYS member
-  addMyToken(token); // remember this device as belonging to this member
-  const user = findUser(m.user_id);
-  const club = findClub(m.club_id);
-  setTheme(club.color);
-
-  const today = getTodayInfo(club);
-  const totalPct = membershipPct(m);
-  const dayLabels = ['S','M','T','W','T','F','S'];
-  const dayKor = ['일','월','화','수','목','금','토'];
-  const todayPill = today.valid
-    ? '<span class="today-pill">오늘 W' + today.week + ' · ' + dayKor[today.day] + '</span>'
-    : (today.days < 0 ? '<span class="today-pill">아직 시작 안 함</span>'
-                       : '<span class="today-pill">학기 종료</span>');
-
-  let rowsHtml = '';
-  for (let w = 1; w <= 8; w++) {
-    const note = noteOf(m.id, w);
-    let cellsHtml = '';
-    for (let d = 0; d < 7; d++) {
-      const ci = checkInOf(m.id, w, d);
-      const state = ci ? ci.state : 'empty';
-      const editable = isCellEditable(w, d, today);
-      const isTodayCell = today.valid && w === today.week && d === today.day;
-      const cls = ['cell', state, editable ? '' : 'locked', isTodayCell ? 'today' : ''].filter(Boolean).join(' ');
-      cellsHtml += '<button class="' + cls + '" data-week="' + w + '" data-day="' + d + '"' +
-        (editable ? '' : ' disabled') + ' title="W' + w + ' ' + dayKor[d] + '">' +
-        cellSvg(state, club) + '</button>';
-    }
-    const wp = weekPct(m, w);
-    rowsHtml +=
-      '<div class="week-row">' +
-        '<div class="week-label">W' + w + '</div>' +
-        '<input class="week-note" data-week="' + w + '" type="text" ' +
-          'value="' + escapeHtml(note ? note.text : '') + '" ' +
-          'placeholder="이번 주 한 일/메모" />' +
-        cellsHtml +
-        '<div class="week-pct ' + (wp > 0 ? 'has' : '') + '">' + wp + '%</div>' +
-      '</div>';
-  }
-
-  wrap.innerHTML =
-    '<div class="tracker-header">' +
-      '<div class="tracker-title">BYS CLUB DAILY TRACKER</div>' +
-      '<div class="tracker-club-line">' + escapeHtml(club.name) + ' — ' + escapeHtml(club.period) + ' — ' + escapeHtml(user.name) + '</div>' +
-      '<div class="tracker-meta">' +
-        escapeHtml(club.description) + ' · ' + escapeHtml(user.timezone) +
-        ' · 전체 <span class="pct">' + totalPct + '%</span>' + todayPill +
-      '</div>' +
-    '</div>' +
-    '<div class="section-title">HABIT FOR THIS SEMESTER</div>' +
-    '<div class="grid-table">' +
-      '<div class="day-headers">' +
-        '<div></div><div></div>' +
-        dayLabels.map(d => '<div class="dh">' + d + '</div>').join('') +
-        '<div></div>' +
-      '</div>' +
-      rowsHtml +
-    '</div>' +
-    '<div class="below-actions">' +
-      '<a class="ghost-btn" href="#/club/' + club.id + '">우리 클럽 보기 →</a>' +
-      '<a class="ghost-btn" href="#/all">모든 클럽 보기 →</a>' +
-    '</div>' +
-    '<div class="tracker-footer">' +
-      '<div class="brand">⊞ BE YOURSELF</div>' +
-      '<div class="tag">영어로 나를 브랜딩하다</div>' +
-    '</div>';
-
-  // Cell clicks → optimistic + Supabase
-  wrap.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.cell');
-    if (!btn || btn.disabled) return;
-    const week = parseInt(btn.dataset.week, 10);
-    const day = parseInt(btn.dataset.day, 10);
-    if (!isCellEditable(week, day, today)) return;
-    const ci = checkInOf(m.id, week, day);
-    const newState = nextState(ci ? ci.state : 'empty');
-    // optimistic update
-    const prevCheckIns = cache.checkIns;
-    if (newState === 'empty') {
-      cache.checkIns = cache.checkIns.filter(c => !(c.membership_id === m.id && c.week === week && c.day === day));
-    } else if (ci) {
-      ci.state = newState; ci.updated_at = new Date().toISOString();
-    } else {
-      cache.checkIns.push({
-        id: 'temp_' + Math.random().toString(36).slice(2,9),
-        membership_id: m.id, week, day, state: newState,
-        updated_at: new Date().toISOString()
-      });
-    }
-    const isTodayCell = today.valid && week === today.week && day === today.day;
-    btn.className = ['cell', newState, '', isTodayCell ? 'today' : ''].filter(Boolean).join(' ');
-    btn.innerHTML = cellSvg(newState, club);
-    const row = btn.closest('.week-row');
-    const pctEl = row.querySelector('.week-pct');
-    const wp = weekPct(m, week);
-    pctEl.textContent = wp + '%';
-    pctEl.className = 'week-pct ' + (wp > 0 ? 'has' : '');
-    const totalEl = wrap.querySelector('.tracker-meta .pct');
-    if (totalEl) totalEl.textContent = membershipPct(m) + '%';
-
-    // Add to pending queue FIRST — if the save fails or the page closes,
-    // the next session will retry from the queue.
-    const ts = new Date().toISOString();
-    const op = {
-      type: 'check', membership_id: m.id, week, day,
-      state: newState === 'empty' ? null : newState, ts
-    };
-    dbg('클릭: W' + week + 'D' + day + ' → ' + newState);
-    pendingAdd(op);
-
-    // persist
-    try {
-      dbg('Supabase 호출 시작...');
-      if (newState === 'empty') {
-        const { error } = await sb.from('check_ins').delete()
-          .eq('membership_id', m.id).eq('week', week).eq('day', day);
-        if (error) throw error;
-      } else {
-        const { data, error } = await sb.from('check_ins').upsert({
-          membership_id: m.id, week, day, state: newState,
-          updated_at: ts
-        }, { onConflict: 'membership_id,week,day' }).select().single();
-        if (error) throw error;
-        // replace temp record with real one
-        cache.checkIns = cache.checkIns.filter(c => !(c.membership_id === m.id && c.week === week && c.day === day));
-        if (data) cache.checkIns.push(data);
-      }
-      pendingRemove(op); // success — remove from retry queue
-      dbg('✅ 저장 성공');
-      flashSave();
-    } catch (err) {
-      console.error(err);
-      dbg('❌ 저장 실패: ' + (err.message || err));
-      // Keep in queue — will retry on next page load / visibility change / online
-      flashSave(true);
-      toast('저장 실패 (큐 보관): ' + (err.message || err), true);
-    }
-  });
-
-  // Note inputs (debounced)
-  wrap.addEventListener('input', (e) => {
-    if (!e.target.matches('.week-note')) return;
-    const week = parseInt(e.target.dataset.week, 10);
-    const text = e.target.value;
-    let n = noteOf(m.id, week);
-    if (n) { n.text = text; n.updated_at = new Date().toISOString(); }
-    else { cache.weekNotes.push({ id: 'temp_' + Math.random().toString(36).slice(2,9), membership_id: m.id, week, text, updated_at: new Date().toISOString() }); }
-
-    clearTimeout(wrap._noteSaveTimer);
-    wrap._noteSaveTimer = setTimeout(async () => {
-      try {
-        const { data, error } = await sb.from('week_notes').upsert({
-          membership_id: m.id, week, text,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'membership_id,week' }).select().single();
-        if (error) throw error;
-        // replace local with server record
-        cache.weekNotes = cache.weekNotes.filter(x => !(x.membership_id === m.id && x.week === week));
-        if (data) cache.weekNotes.push(data);
-        flashSave();
-      } catch (err) {
-        console.error(err);
-        flashSave(true);
-        toast('메모 저장 실패: ' + (err.message || err), true);
-      }
-    }, 500);
-  });
-
-  setTimeout(() => {
-    if (today.valid && window.innerWidth < 600) {
-      const todayBtn = wrap.querySelector('.cell.today');
-      if (todayBtn) todayBtn.closest('.week-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, 80);
-
-  return wrap;
-}
-
-// ============ Club Dashboard ============
-// ============ Leader page (per-club, token-protected) ============
-function renderLeader(token) {
-  const wrap = document.createElement('div');
-  wrap.className = 'leader-wrap';
-  const club = cache.clubs.find(c => c.leader_token && c.leader_token === token);
-  if (!club) {
-    setTheme();
-    wrap.innerHTML =
-      '<div class="empty" style="margin-top:30px;">' +
-        '리더 URL이 유효하지 않아요.<br>' +
-        '<span style="font-size:12px; color:var(--muted);">관리자에게 새 URL을 요청해주세요.</span><br>' +
-        '<a href="#/" style="font-size:13px;">홈으로</a>' +
-      '</div>';
-    return wrap;
-  }
-  setTheme(club.color);
-
-  const memberships = membershipsOfClub(club.id).slice().sort((a, b) => {
-    const ua = findUser(a.user_id), ub = findUser(b.user_id);
-    return (ua ? ua.name : '').localeCompare(ub ? ub.name : '');
-  });
-  const today = getTodayInfo(club);
-  const currentWeek = today.valid ? today.week : null;
-  const todayDay = today.valid ? today.day : null;
-  const DAY_LABELS = ['일','월','화','수','목','금','토'];
-
-  // Build header rows
-  let weekHeader = '<th class="lname"></th>';
-  for (let w = 1; w <= 8; w++) {
-    const cur = currentWeek === w ? ' cur' : '';
-    weekHeader += '<th class="wh' + cur + '" colspan="7">W' + w + '</th>';
-  }
-  weekHeader += '<th class="lpct">%</th>';
-
-  let dayHeader = '<th class="lname"></th>';
-  for (let w = 1; w <= 8; w++) {
-    for (let d = 0; d < 7; d++) {
-      const isSun = d === 0 ? ' sun' : '';
-      const isSat = d === 6 ? ' sat' : '';
-      dayHeader += '<th class="dh' + isSun + isSat + '">' + DAY_LABELS[d] + '</th>';
-    }
-  }
-  dayHeader += '<th class="lpct"></th>';
-
-  // Build member rows
-  const todayAbs = today.valid ? (today.week - 1) * 7 + today.day : -1;
-  function buildRowHtml(m, u) {
-    let cells = '';
-    for (let w = 1; w <= 8; w++) {
-      for (let d = 0; d < 7; d++) {
-        const ci = checkInOf(m.id, w, d);
-        const isToday = (currentWeek === w && todayDay === d) ? ' today' : '';
-        const isWeekend = (d === 0 || d === 6) ? ' weekend' : '';
-        const isSat = d === 6 ? ' sat' : '';
-        const cellAbs = (w - 1) * 7 + d;
-        const isFuture = today.valid && cellAbs > todayAbs;
-        const editable = today.valid && !isFuture; // past + today
-        let dotCls = '';
-        if (ci && (ci.state === 'done' || ci.state === 'partial')) dotCls = ci.state;
-        else if (isFuture) dotCls = 'future';
-        cells += '<td class="lc' + isToday + isWeekend + isSat + (editable ? ' editable' : '') + '"' +
-          (editable ? ' data-mid="' + m.id + '" data-w="' + w + '" data-d="' + d + '" title="클릭해서 변경"' : '') + '>' +
-          '<span class="leader-cell ' + dotCls + '"></span>' +
-          '</td>';
-      }
-    }
-    return '<td class="lname" title="' + escapeHtml(u.name) + '">' + escapeHtml(u.name) + '</td>' +
-      cells +
-      '<td class="lpct" data-mid-pct="' + m.id + '">' + membershipPct(m) + '%</td>';
-  }
-  const rowsHtml = memberships.map(m => {
-    const u = findUser(m.user_id);
-    if (!u) return '';
-    return '<tr data-row-mid="' + m.id + '">' + buildRowHtml(m, u) + '</tr>';
-  }).join('');
-
-  const tableHtml =
-    '<div class="leader-scroll"><table class="leader-table">' +
-      '<thead>' +
-        '<tr>' + weekHeader + '</tr>' +
-        '<tr class="day-row">' + dayHeader + '</tr>' +
-      '</thead>' +
-      '<tbody>' + (rowsHtml || '<tr><td colspan="58" style="padding:24px; text-align:center; color:var(--muted);">아직 멤버가 없어요.</td></tr>') + '</tbody>' +
-    '</table></div>';
-
-  wrap.innerHTML =
-    '<div class="leader-head" style="border-left: 3px solid ' + club.color + '; padding-left: 12px;">' +
-      '<h1>' + escapeHtml(club.name) + ' — 리더 뷰</h1>' +
-      '<div class="meta">' +
-        '<span><b>' + escapeHtml(club.period) + '</b></span>' +
-        '<span>멤버 <b>' + memberships.length + '</b>명</span>' +
-        (currentWeek ? '<span>현재 <b>W' + currentWeek + '</b></span>' : '<span style="color:var(--muted-2)">기간 외</span>') +
-        '<span>평균 <b>' + clubAvgPct(club.id) + '%</b></span>' +
-      '</div>' +
-    '</div>' +
-    tableHtml +
-    '<div class="leader-legend">' +
-      '<span class="lg"><span class="leader-cell done"></span> 완료</span>' +
-      '<span class="lg"><span class="leader-cell partial"></span> 절반</span>' +
-      '<span class="lg"><span class="leader-cell"></span> 미체크</span>' +
-      '<span class="lg"><span class="leader-cell future"></span> 미래(수정 불가)</span>' +
-      '<span class="lg" style="margin-left:auto; color:var(--muted-2);">' +
-        '※ 셀 클릭 → 빈칸 → 완료 → 절반 → 빈칸 순환' +
-      '</span>' +
-    '</div>';
-
-  // Cell click → cycle empty → done → partial → empty (only past + today)
-  wrap.addEventListener('click', async (e) => {
-    const cell = e.target.closest('td.lc.editable');
-    if (!cell) return;
-    const mid = cell.dataset.mid;
-    const w = parseInt(cell.dataset.w, 10);
-    const d = parseInt(cell.dataset.d, 10);
-    if (!mid || isNaN(w) || isNaN(d)) return;
-
-    const m = findMembership(mid);
-    if (!m) return;
-
-    const ci = checkInOf(mid, w, d);
-    const newState = nextState(ci ? ci.state : 'empty');
-
-    // Optimistic update
-    const prevCheckIns = cache.checkIns;
-    if (newState === 'empty') {
-      cache.checkIns = cache.checkIns.filter(c =>
-        !(c.membership_id === mid && c.week === w && c.day === d));
-    } else if (ci) {
-      ci.state = newState; ci.updated_at = new Date().toISOString();
-    } else {
-      cache.checkIns.push({
-        id: 'temp_' + Math.random().toString(36).slice(2, 9),
-        membership_id: mid, week: w, day: d, state: newState,
-        updated_at: new Date().toISOString()
-      });
-    }
-
-    // Update cell display
-    const span = cell.querySelector('.leader-cell');
-    span.className = 'leader-cell ' + (newState === 'empty' ? '' : newState);
-    // Update % column
-    const pctEl = wrap.querySelector('[data-mid-pct="' + mid + '"]');
-    if (pctEl) pctEl.textContent = membershipPct(m) + '%';
-
-    // Add to pending queue first (mobile-safe)
-    const ts = new Date().toISOString();
-    const op = {
-      type: 'check', membership_id: mid, week: w, day: d,
-      state: newState === 'empty' ? null : newState, ts
-    };
-    pendingAdd(op);
-
-    // Persist
-    try {
-      if (newState === 'empty') {
-        const { error } = await sb.from('check_ins').delete()
-          .eq('membership_id', mid).eq('week', w).eq('day', d);
-        if (error) throw error;
-      } else {
-        const { data, error } = await sb.from('check_ins').upsert({
-          membership_id: mid, week: w, day: d, state: newState,
-          updated_at: ts
-        }, { onConflict: 'membership_id,week,day' }).select().single();
-        if (error) throw error;
-        // Replace temp with real
-        cache.checkIns = cache.checkIns.filter(c =>
-          !(c.membership_id === mid && c.week === w && c.day === d));
-        if (data) cache.checkIns.push(data);
-      }
-      pendingRemove(op);
-      toast('저장됨');
-    } catch (err) {
-      console.error(err);
-      // Keep in queue — will retry on next load / visibility / online
-      toast('네트워크 불안정 — 다음 접속 시 자동 저장됩니다', true);
-    }
-  });
-
-  return wrap;
-}
-
-function renderClubDash(clubId) {
-  const wrap = document.createElement('div');
-  const club = findClub(clubId);
-  if (!club) {
-    setTheme();
-    wrap.innerHTML = '<div class="empty">클럽을 찾을 수 없습니다. <a href="#/">홈으로</a></div>';
-    return wrap;
-  }
-  setTheme(club.color);
-
-  const memberships = membershipsOfClub(clubId).slice().sort((a,b) => membershipPct(b) - membershipPct(a));
-  const today = getTodayInfo(club);
-  const currentWeek = today.valid ? today.week : null;
-
-  let memberHtml = memberships.map(m => {
-    const u = findUser(m.user_id);
-    if (!u) return '';
-    const currentNote = currentWeek ? noteOf(m.id, currentWeek) : null;
-    let dotsHtml = '';
-    for (let w = 1; w <= 8; w++) {
-      for (let d = 0; d < 7; d++) {
-        const ci = checkInOf(m.id, w, d);
-        const cls = ci ? ('h-dot ' + ci.state) : 'h-dot';
-        dotsHtml += '<div class="' + cls + '"></div>';
-      }
-    }
-    const last = lastCheckTs(m.id);
-    return '<div class="member-row">' +
-      '<div>' +
-        '<div class="member-name">' + escapeHtml(u.name) + '</div>' +
-        '<div class="member-note">' + (currentNote && currentNote.text ? '✏ ' + escapeHtml(currentNote.text) : '') + '</div>' +
-        '<div class="member-meta">' + escapeHtml(u.timezone) + '</div>' +
-        '<div class="heatmap">' + dotsHtml + '</div>' +
-      '</div>' +
-      '<div class="member-stat">' +
-        '<div class="pct">' + membershipPct(m) + '%</div>' +
-        '<div class="last">' + timeSince(last) + '</div>' +
-      '</div>' +
-    '</div>';
-  }).join('') || '<div class="empty">아직 멤버가 없어요.</div>';
-
-  wrap.innerHTML =
-    '<div class="dash-header" style="background:' + hexToRgba(club.color, 0.13) + '; border-color:' + club.color + ';">' +
-      '<h1>' + escapeHtml(club.name) + '</h1>' +
-      '<div class="meta">' + escapeHtml(club.period) + ' · ' + escapeHtml(club.description) + ' · 멤버 ' + memberships.length + '명' +
-        (currentWeek ? ' · 현재 <b>W' + currentWeek + '</b>' : '') + '</div>' +
-      '<div class="big-pct" style="color:' + club.color + '">' + clubAvgPct(clubId) + '%</div>' +
-    '</div>' +
-    '<div>' + memberHtml + '</div>';
-  return wrap;
-}
-
-// ============ My Clubs (membership-token-based) ============
-function renderMyClubs() {
-  const wrap = document.createElement('div');
-  const myMs = getMyMemberships();
-  if (myMs.length === 0) {
-    wrap.innerHTML =
-      '<div class="all-clubs-header">' +
-        '<h1>나의 클럽 보기</h1>' +
-        '<div class="sub">아직 가입한 클럽이 없어요. 받은 트래커 링크로 한 번 들어와주세요.</div>' +
-      '</div>' +
-      '<div style="text-align:center; margin-top:24px">' +
-        '<a class="ghost-btn" href="#/">홈으로</a>' +
-      '</div>';
-    return wrap;
-  }
-  const myClubIds = [...new Set(myMs.map(m => m.club_id))];
-  const clubs = myClubIds.map(id => findClub(id)).filter(Boolean)
-    .sort((a, b) => clubAvgPct(b.id) - clubAvgPct(a.id));
-  const totalMembers = clubs.reduce((sum, c) => sum + membershipsOfClub(c.id).length, 0);
-  const overall = clubs.length
-    ? Math.round(clubs.reduce((a, c) => a + clubAvgPct(c.id), 0) / clubs.length)
-    : 0;
-
-  const myUserIds = new Set(myMs.map(m => m.user_id));
-
-  let body = clubs.map(c => {
-    const ms = membershipsOfClub(c.id).slice().sort((a, b) => membershipPct(b) - membershipPct(a));
-    const today = getTodayInfo(c);
-    const week = today.valid ? today.week : null;
-    const rows = ms.map(m => {
-      const u = findUser(m.user_id);
-      if (!u) return '';
-      const pct = membershipPct(m);
-      const note = week ? noteOf(m.id, week) : null;
-      const isMe = myUserIds.has(m.user_id);
-      return '<div class="mini-row"' + (isMe ? ' style="background:' + hexToRgba(c.color, 0.06) + '"' : '') + '>' +
-        '<div>' +
-          '<span class="name">' + escapeHtml(u.name) + (isMe ? ' <span style="font-size:10px; color:' + c.color + '">(나)</span>' : '') + '</span>' +
-          (note && note.text ? ' <span style="color:var(--muted); font-size:11px">· ' + escapeHtml(note.text) + '</span>' : '') +
-        '</div>' +
-        '<div class="bar"><i style="width:' + pct + '%; background:' + c.color + '"></i></div>' +
-        '<div class="pct-num">' + pct + '%</div>' +
-      '</div>';
-    }).join('') || '<div class="empty" style="padding:10px 0">멤버 없음</div>';
-    return '<div class="club-block">' +
-      '<div class="club-block-head" style="background:' + hexToRgba(c.color, 0.18) + '">' +
-        '<div>' +
-          '<h2>' + escapeHtml(c.name) + '</h2>' +
-          '<div class="sub">' + escapeHtml(c.period) + ' · 멤버 ' + ms.length + '명' +
-            (week ? ' · 현재 W' + week : '') + '</div>' +
-        '</div>' +
-        '<div class="pct" style="color:' + c.color + '">' + clubAvgPct(c.id) + '%</div>' +
-      '</div>' +
-      '<div class="club-block-body">' + rows + '</div>' +
-    '</div>';
-  }).join('');
-
-  wrap.innerHTML =
-    '<div class="all-clubs-header">' +
-      '<h1>나의 클럽</h1>' +
-      '<div class="sub">' + clubs.length + '개 클럽 · 멤버 ' + totalMembers + '명 · 평균 ' + overall + '%</div>' +
-    '</div>' +
-    body +
-    '<div style="text-align:center; margin-top:18px">' +
-      '<a class="ghost-btn" href="#/all">모든 BYS 클럽 보기 →</a>' +
-    '</div>';
-  return wrap;
-}
-
-// ============ All Clubs (gated) ============
-function renderAllClubs() {
-  const wrap = document.createElement('div');
-  const clubs = cache.clubs.slice().sort((a,b) => clubAvgPct(b.id) - clubAvgPct(a.id));
-  const totalMembers = cache.memberships.length;
-  const overall = clubs.length
-    ? Math.round(clubs.reduce((a, c) => a + clubAvgPct(c.id), 0) / clubs.length)
-    : 0;
-
-  let body = clubs.map(c => {
-    const ms = membershipsOfClub(c.id).slice().sort((a, b) => membershipPct(b) - membershipPct(a));
-    const today = getTodayInfo(c);
-    const week = today.valid ? today.week : null;
-    const rows = ms.map(m => {
-      const u = findUser(m.user_id);
-      if (!u) return '';
-      const pct = membershipPct(m);
-      const note = week ? noteOf(m.id, week) : null;
-      return '<div class="mini-row">' +
-        '<div>' +
-          '<span class="name">' + escapeHtml(u.name) + '</span>' +
-          (note && note.text ? ' <span style="color:var(--muted); font-size:11px">· ' + escapeHtml(note.text) + '</span>' : '') +
-        '</div>' +
-        '<div class="bar"><i style="width:' + pct + '%; background:' + c.color + '"></i></div>' +
-        '<div class="pct-num">' + pct + '%</div>' +
-      '</div>';
-    }).join('') || '<div class="empty" style="padding:10px 0">멤버 없음</div>';
-    return '<div class="club-block">' +
-      '<div class="club-block-head" style="background:' + hexToRgba(c.color, 0.18) + '">' +
-        '<div>' +
-          '<h2>' + escapeHtml(c.name) + '</h2>' +
-          '<div class="sub">' + escapeHtml(c.period) + ' · 멤버 ' + ms.length + '명' +
-            (week ? ' · 현재 W' + week : '') + '</div>' +
-        '</div>' +
-        '<div class="pct" style="color:' + c.color + '">' + clubAvgPct(c.id) + '%</div>' +
-      '</div>' +
-      '<div class="club-block-body">' + rows + '</div>' +
-    '</div>';
-  }).join('') || '<div class="empty">아직 클럽이 없어요.</div>';
-
-  wrap.innerHTML =
-    '<div class="all-clubs-header">' +
-      '<h1>모든 클럽 한눈에</h1>' +
-      '<div class="sub">총 ' + clubs.length + '개 클럽 · ' + totalMembers + '명 · 평균 ' + overall + '%</div>' +
-    '</div>' +
-    body;
-  return wrap;
-}
-
-// ============ Member Gate ============
-function renderMemberGate() {
-  const wrap = document.createElement('div');
-  wrap.innerHTML =
-    '<div class="gate-card">' +
-      '<h2>BYS 멤버 확인</h2>' +
-      '<p>모든 클럽 보기는 BYS 멤버만 볼 수 있어요. 클럽 비밀번호를 입력해주세요.</p>' +
-      '<input id="g-pw" type="password" placeholder="비밀번호" autocomplete="off" autofocus>' +
-      '<div class="err-msg" id="g-err"></div>' +
-      '<div class="gate-actions">' +
-        '<button class="primary-btn" id="g-go">들어가기</button>' +
-      '</div>' +
-    '</div>';
-  const tryGo = () => {
-    const pw = wrap.querySelector('#g-pw').value;
-    if (pw && pw === cache.settings.member_gate_password) {
-      passMemberGate();
-      route();
-    } else {
-      wrap.querySelector('#g-err').textContent = '비밀번호가 맞지 않아요.';
-    }
-  };
-  wrap.querySelector('#g-go').addEventListener('click', tryGo);
-  wrap.querySelector('#g-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryGo(); });
-  return wrap;
-}
-
-// ============ Admin Gate ============
 function renderAdminGate() {
   const wrap = document.createElement('div');
+  wrap.className = 'container';
   wrap.innerHTML =
-    '<div class="gate-card">' +
-      '<h2>관리자 로그인</h2>' +
-      '<p>관리자 비밀번호를 입력해주세요.</p>' +
-      '<input id="g-pw" type="password" placeholder="비밀번호" autocomplete="off" autofocus>' +
-      '<div class="err-msg" id="g-err"></div>' +
-      '<div class="gate-actions">' +
-        '<button class="primary-btn" id="g-go">들어가기</button>' +
+    '<div class="gate">' +
+      '<h1>관리자</h1>' +
+      '<p>비밀번호를 입력해주세요.</p>' +
+      '<input type="password" id="adm-pw" inputmode="numeric" autocomplete="off" maxlength="20"/>' +
+      '<button class="btn primary" id="adm-submit">확인</button>' +
+    '</div>';
+  const input = wrap.querySelector('#adm-pw');
+  const submit = wrap.querySelector('#adm-submit');
+  const go = () => {
+    if (input.value === ADMIN_PW) { passAdmin(); route(); }
+    else { toast('비밀번호가 틀립니다', true); input.value = ''; input.focus(); }
+  };
+  submit.addEventListener('click', go);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+  setTimeout(() => input.focus(), 60);
+  return wrap;
+}
+
+// ============ ADMIN DASHBOARD ============
+function renderAdmin() {
+  const wrap = document.createElement('div');
+  wrap.className = 'container';
+
+  wrap.innerHTML =
+    '<div class="admin-header">' +
+      '<div>' +
+        '<h1>관리자 대시보드</h1>' +
+        '<div class="sub">총 ' + cache.clubs.length + '개 클럽 · ' + cache.memberships.length + '명 멤버</div>' +
+      '</div>' +
+      '<div style="display:flex; gap:8px;">' +
+        '<button class="btn ghost small" id="expand-all">모두 펼치기</button>' +
+        '<button class="btn primary" id="new-club">+ 새 클럽</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="clubs-list" id="clubs-list"></div>';
+
+  const list = wrap.querySelector('#clubs-list');
+  const clubs = cache.clubs.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  if (!clubs.length) {
+    list.innerHTML = '<div class="empty">아직 클럽이 없습니다. 우측 상단 "+ 새 클럽"으로 시작하세요.</div>';
+  } else {
+    clubs.forEach(c => list.appendChild(renderClubCard(c)));
+  }
+
+  wrap.querySelector('#new-club').addEventListener('click', () => openClubModal(null));
+  wrap.querySelector('#expand-all').addEventListener('click', function() {
+    const cards = list.querySelectorAll('.club-card');
+    const allOpen = Array.from(cards).every(c => c.classList.contains('open'));
+    cards.forEach(c => c.classList.toggle('open', !allOpen));
+    this.textContent = allOpen ? '모두 펼치기' : '모두 접기';
+  });
+
+  return wrap;
+}
+
+function renderClubCard(club) {
+  const card = document.createElement('div');
+  card.className = 'club-card';
+  card.dataset.clubId = club.id;
+
+  const prog = clubProgress(club);
+  const period = getClubPeriod(club);
+  const memberships = membershipsOfClub(club.id);
+  const currentWeek = getCurrentWeek(club);
+
+  const freqLabel = getFreqLabel(club);
+  const typeLabel = getTypeLabel(club);
+  const leaderUrl = club.leader_token ? (location.origin + location.pathname + '#/leader/' + club.leader_token) : null;
+
+  card.innerHTML =
+    '<div class="card-head">' +
+      '<div class="card-caret">▶</div>' +
+      '<div class="club-color" style="background:' + escapeHtml(club.color || '#2A9D8F') + '"></div>' +
+      '<div class="card-title">' + escapeHtml(club.name || '(이름 없음)') + '</div>' +
+      '<div class="card-progress-mini">' +
+        '<div class="bar"><div class="fill" style="width:' + prog.pct + '%; background:' + escapeHtml(club.color || '#2A9D8F') + '"></div></div>' +
+        '<div class="pct-mini">' + prog.pct + '%</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="card-body">' +
+      '<div class="info-grid">' +
+        '<div class="k">기간</div>' +
+        '<div class="v">' + (period.start ? (fmtDateShort(period.start) + ' ~ ' + fmtDateShort(period.end) + (currentWeek ? ' · <span style="color:' + escapeHtml(club.color || '#2A9D8F') + '; font-weight:700;">지금 W' + currentWeek + '</span>' : '')) : '-') + '</div>' +
+        '<div class="k">진행 방식</div>' +
+        '<div class="v">' + typeLabel + '</div>' +
+        '<div class="k">요일 규칙</div>' +
+        '<div class="v">' + freqLabel + '</div>' +
+        '<div class="k">멤버</div>' +
+        '<div class="v">' + memberships.length + '명</div>' +
+      '</div>' +
+      (leaderUrl ?
+        '<div class="leader-url-box">' +
+          '<span class="url">' + escapeHtml(leaderUrl) + '</span>' +
+          '<button class="btn small ghost" data-copy>복사</button>' +
+        '</div>' : '') +
+      '<div class="btn-row">' +
+        '<a class="btn primary small" href="#/leader/' + escapeHtml(club.leader_token || '') + '">리더 뷰 열기 →</a>' +
+        '<button class="btn ghost small" data-members>멤버 관리</button>' +
+        '<button class="btn ghost small" data-edit>편집</button>' +
+        '<button class="btn ghost small" data-newtoken>리더 URL 재발급</button>' +
+        '<button class="btn ghost small" data-delete style="color:var(--danger);">삭제</button>' +
       '</div>' +
     '</div>';
-  const tryGo = () => {
-    const pw = wrap.querySelector('#g-pw').value;
-    if (pw && pw === cache.settings.admin_password) {
-      passAdminGate();
-      route();
-    } else {
-      wrap.querySelector('#g-err').textContent = '비밀번호가 맞지 않아요.';
-    }
-  };
-  wrap.querySelector('#g-go').addEventListener('click', tryGo);
-  wrap.querySelector('#g-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryGo(); });
-  return wrap;
-}
 
-// ============ Admin ============
-function renderAdmin(tab) {
-  tab = tab || 'clubs';
-  const wrap = document.createElement('div');
-  wrap.innerHTML =
-    '<h1 style="font-size:18px; margin: 4px 0 12px;">관리자</h1>' +
-    '<div class="admin-tabs">' +
-      '<a class="admin-tab ' + (tab==='clubs'?'active':'') + '" href="#/admin/clubs">클럽</a>' +
-      '<a class="admin-tab ' + (tab==='users'?'active':'') + '" href="#/admin/users">사용자</a>' +
-      '<a class="admin-tab ' + (tab==='memberships'?'active':'') + '" href="#/admin/memberships">멤버십 (URL)</a>' +
-      '<a class="admin-tab ' + (tab==='settings'?'active':'') + '" href="#/admin/settings">설정</a>' +
-    '</div>' +
-    '<div id="admin-tab-body"></div>';
-  const body = wrap.querySelector('#admin-tab-body');
-  if (tab === 'clubs')           renderAdminClubs(body);
-  else if (tab === 'users')      renderAdminUsers(body);
-  else if (tab === 'settings')   renderAdminSettings(body);
-  else                            renderAdminMemberships(body);
-  return wrap;
-}
-
-function renderAdminClubs(body) {
-  let formColor = COLOR_PRESETS[0].value;
-  body.innerHTML =
-    '<div class="add-form">' +
-      '<div style="font-weight:500; margin-bottom:8px;">+ 새 클럽 추가</div>' +
-      '<div class="form-row"><label>이름</label><input id="cf-name" placeholder="예: CEO의 책장"></div>' +
-      '<div class="form-row"><label>기간 라벨</label><input id="cf-period" placeholder="예: 26년 2,3월"></div>' +
-      '<div class="form-row"><label>설명</label><input id="cf-desc" placeholder="예: 매일 책 읽기"></div>' +
-      '<div class="form-row"><label>시작일 (일요일)</label><input id="cf-start" type="date" value="' + getRecentSunday(0) + '"></div>' +
-      '<div class="form-row"><label>컬러</label>' +
-        '<div class="color-row" id="cf-colors">' +
-          COLOR_PRESETS.map((c, i) =>
-            '<div class="color-swatch ' + (i===0?'selected':'') + '" data-color="' + c.value + '" style="background:' + c.value + '" title="' + c.name + '"></div>'
-          ).join('') +
-        '</div>' +
-      '</div>' +
-      '<div style="text-align:right; margin-top:10px;">' +
-        '<button class="primary-btn" id="cf-submit">생성</button>' +
-      '</div>' +
-    '</div>' +
-    '<table class="admin-table">' +
-      '<thead><tr><th>이름</th><th>기간</th><th>설명</th><th>시작일</th><th>멤버</th><th>평균</th><th></th></tr></thead>' +
-      '<tbody>' +
-        cache.clubs.map(c =>
-          '<tr>' +
-            '<td><span class="color-dot" style="background:' + c.color + '"></span>' + escapeHtml(c.name) + '</td>' +
-            '<td>' + escapeHtml(c.period) + '</td>' +
-            '<td>' + escapeHtml(c.description) + '</td>' +
-            '<td>' + escapeHtml(c.start_date) + '</td>' +
-            '<td>' + membershipsOfClub(c.id).length + '</td>' +
-            '<td>' + clubAvgPct(c.id) + '%</td>' +
-            '<td class="actions">' +
-              '<a class="ghost-btn" href="#/club/' + c.id + '">대시보드</a>' +
-              '<button class="ghost-btn" data-action="leader-url" data-id="' + c.id + '">리더 URL</button>' +
-              '<button class="ghost-btn" data-action="edit-club" data-id="' + c.id + '">수정</button>' +
-              '<button class="ghost-btn" data-action="del-club" data-id="' + c.id + '">삭제</button>' +
-            '</td>' +
-          '</tr>'
-        ).join('') +
-      '</tbody>' +
-    '</table>';
-
-  body.querySelectorAll('#cf-colors .color-swatch').forEach(sw => {
-    sw.addEventListener('click', () => {
-      body.querySelectorAll('#cf-colors .color-swatch').forEach(s => s.classList.remove('selected'));
-      sw.classList.add('selected');
-      formColor = sw.dataset.color;
-    });
+  // Head: toggle open/closed
+  card.querySelector('.card-head').addEventListener('click', () => {
+    card.classList.toggle('open');
   });
 
-  body.querySelector('#cf-submit').addEventListener('click', async () => {
-    const name = body.querySelector('#cf-name').value.trim();
-    const period = body.querySelector('#cf-period').value.trim();
-    const desc = body.querySelector('#cf-desc').value.trim();
-    const start = body.querySelector('#cf-start').value;
-    if (!name) return toast('이름을 입력해주세요', true);
-    if (!start) return toast('시작일을 선택해주세요', true);
-    try {
-      const { data, error } = await sb.from('clubs').insert({
-        name, period, description: desc, start_date: start, color: formColor
-      }).select().single();
-      if (error) throw error;
-      cache.clubs.push(data);
-      renderAdminClubs(body);
-      toast('클럽 생성됨');
-    } catch (err) { toast('생성 실패: ' + (err.message || err), true); }
-  });
-
-  body.querySelectorAll('[data-action="del-club"]').forEach(b => {
-    b.addEventListener('click', async () => {
-      const id = b.dataset.id;
-      if (!confirm('이 클럽과 모든 멤버십·기록을 삭제할까요?')) return;
+  // Actions
+  const copyBtn = card.querySelector('[data-copy]');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
       try {
-        const { error } = await sb.from('clubs').delete().eq('id', id);
-        if (error) throw error;
-        invalidateCache();
-        await loadAll();
-        renderAdminClubs(body);
-      } catch (err) { toast('삭제 실패: ' + (err.message || err), true); }
+        await navigator.clipboard.writeText(leaderUrl);
+        toast('리더 URL 복사됨');
+      } catch { toast('복사 실패 — 수동으로 선택하세요', true); }
     });
+  }
+  card.querySelector('[data-edit]').addEventListener('click', (e) => {
+    e.stopPropagation(); openClubModal(club);
+  });
+  card.querySelector('[data-members]').addEventListener('click', (e) => {
+    e.stopPropagation(); openMembersModal(club);
+  });
+  card.querySelector('[data-newtoken]').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!confirm('리더 URL을 새로 발급하면 기존 URL은 사용할 수 없게 됩니다. 계속?')) return;
+    const tok = genLeaderToken(club.name);
+    const { error } = await sb.from('clubs').update({ leader_token: tok }).eq('id', club.id);
+    if (error) return toast('실패: ' + error.message, true);
+    invalidateCache(); await loadAll(); route();
+    toast('새 리더 URL 발급 완료');
+  });
+  card.querySelector('[data-delete]').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!confirm('정말 "' + club.name + '" 클럽을 삭제할까요? 관련 멤버십/기록이 모두 사라집니다.')) return;
+    const { error } = await sb.from('clubs').delete().eq('id', club.id);
+    if (error) return toast('실패: ' + error.message, true);
+    invalidateCache(); await loadAll(); route();
+    toast('삭제됨');
   });
 
-  body.querySelectorAll('[data-action="edit-club"]').forEach(b => {
-    b.addEventListener('click', () => {
-      const club = findClub(b.dataset.id);
-      if (!club) return;
-      const html =
-        '<div class="form-row"><label>이름</label><input id="ec-name" value="' + escapeHtml(club.name) + '"></div>' +
-        '<div class="form-row"><label>기간 라벨</label><input id="ec-period" value="' + escapeHtml(club.period) + '"></div>' +
-        '<div class="form-row"><label>설명</label><input id="ec-desc" value="' + escapeHtml(club.description) + '"></div>' +
-        '<div class="form-row"><label>시작일 (일요일)</label><input id="ec-start" type="date" value="' + escapeHtml(club.start_date) + '"></div>' +
-        '<div class="form-row"><label>컬러</label>' +
-          '<div class="color-row" id="ec-colors">' +
-            COLOR_PRESETS.map(cc =>
-              '<div class="color-swatch ' + (cc.value === club.color ? 'selected' : '') +
-              '" data-color="' + cc.value + '" style="background:' + cc.value + '" title="' + cc.name + '"></div>'
-            ).join('') +
-          '</div>' +
-        '</div>';
-      showModal('클럽 수정', html, async (modal) => {
-        const name = modal.querySelector('#ec-name').value.trim();
-        const period = modal.querySelector('#ec-period').value.trim();
-        const desc = modal.querySelector('#ec-desc').value.trim();
-        const start = modal.querySelector('#ec-start').value;
-        const sel = modal.querySelector('#ec-colors .selected');
-        const color = sel ? sel.dataset.color : club.color;
-        if (!name) { toast('이름을 입력해주세요', true); return false; }
-        if (!start) { toast('시작일을 선택해주세요', true); return false; }
-        try {
-          const { data, error } = await sb.from('clubs').update({
-            name, period, description: desc, start_date: start, color
-          }).eq('id', club.id).select().single();
-          if (error) throw error;
-          Object.assign(club, data);
-          toast('수정됨');
-          renderAdminClubs(body);
-        } catch (err) { toast('수정 실패: ' + (err.message || err), true); return false; }
-      }, (modal) => {
-        modal.querySelectorAll('#ec-colors .color-swatch').forEach(sw => {
-          sw.addEventListener('click', () => {
-            modal.querySelectorAll('#ec-colors .color-swatch').forEach(s => s.classList.remove('selected'));
-            sw.classList.add('selected');
+  return card;
+}
+
+function getFreqLabel(club) {
+  const n = club.frequency_per_week || 7;
+  const mode = club.frequency_mode || 'freeform';
+  if (mode === 'fixed' && club.fixed_days && club.fixed_days.length) {
+    const days = [...club.fixed_days].sort().map(d => WEEKDAY_LABELS[d]).join('/');
+    return '주 ' + n + '회 · <b>' + days + '</b> 고정';
+  }
+  return '주 ' + n + '회 · 자유';
+}
+function getTypeLabel(club) {
+  const t = club.entry_type || 'check';
+  if (t === 'number') return '📊 숫자 (' + escapeHtml(club.unit || '') + ')';
+  if (t === 'count') return '🔢 횟수';
+  return '✅ 체크';
+}
+
+// ============ CLUB MODAL (Create / Edit) ============
+function openClubModal(club) {
+  const isEdit = !!club;
+  const c = club || {};
+  const bodyHtml =
+    '<div class="form-group">' +
+      '<label>클럽 이름</label>' +
+      '<input type="text" id="cf-name" value="' + escapeHtml(c.name || '') + '" placeholder="예: 계단으로 기초체력">' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>리더 이름</label>' +
+      '<input type="text" id="cf-leader" value="' + escapeHtml(c.leader_name || '') + '" placeholder="예: 이수경">' +
+    '</div>' +
+    '<div class="form-row">' +
+      '<div class="form-group">' +
+        '<label>시작 날짜</label>' +
+        '<input type="date" id="cf-start" value="' + escapeHtml(c.start_date || '') + '">' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>기간</label>' +
+        '<input type="text" value="8주 고정" disabled>' +
+      '</div>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>색상</label>' +
+      '<div class="color-picker" id="cf-colors">' +
+        COLOR_PRESETS.map(cp =>
+          '<div class="color-swatch' + (c.color === cp.value ? ' selected' : '') + '" ' +
+            'data-color="' + cp.value + '" style="background:' + cp.value + '" title="' + cp.name + '"></div>'
+        ).join('') +
+      '</div>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>진행 방식</label>' +
+      '<div class="type-selector" id="cf-type">' +
+        ['check', 'number', 'count'].map(t => {
+          const info = { check: {e:'✅', n:'체크'}, number: {e:'📊', n:'숫자'}, count: {e:'🔢', n:'횟수'} }[t];
+          const checked = (c.entry_type || 'check') === t;
+          return '<label class="' + (checked ? 'checked' : '') + '" data-type="' + t + '">' +
+            '<input type="radio" name="type" value="' + t + '"' + (checked ? ' checked' : '') + '>' +
+            '<span class="t-emoji">' + info.e + '</span>' +
+            '<span class="t-name">' + info.n + '</span>' +
+          '</label>';
+        }).join('') +
+      '</div>' +
+      '<div class="hint">체크=완료 여부만 · 숫자=값 입력 (km/층 등) · 횟수=하루 여러 번</div>' +
+    '</div>' +
+    '<div class="form-group" id="cf-unit-wrap" style="display:' + ((c.entry_type === 'number') ? 'block' : 'none') + ';">' +
+      '<label>단위 (숫자형만)</label>' +
+      '<input type="text" id="cf-unit" value="' + escapeHtml(c.unit || '') + '" placeholder="예: km, 층, 잔">' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>주 몇 회?</label>' +
+      '<div class="form-row">' +
+        '<select id="cf-freq">' +
+          [1,2,3,4,5,6,7].map(n =>
+            '<option value="' + n + '"' + ((c.frequency_per_week || 7) === n ? ' selected' : '') + '>주 ' + n + '회</option>'
+          ).join('') +
+        '</select>' +
+      '</div>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>요일 규칙</label>' +
+      '<div class="mode-toggle" id="cf-mode">' +
+        '<label class="' + ((c.frequency_mode || 'freeform') === 'freeform' ? 'checked' : '') + '" data-mode="freeform"><input type="radio" name="mode" value="freeform"' + ((c.frequency_mode || 'freeform') === 'freeform' ? ' checked' : '') + '>자유 (아무 요일)</label>' +
+        '<label class="' + (c.frequency_mode === 'fixed' ? 'checked' : '') + '" data-mode="fixed"><input type="radio" name="mode" value="fixed"' + (c.frequency_mode === 'fixed' ? ' checked' : '') + '>요일 지정</label>' +
+      '</div>' +
+    '</div>' +
+    '<div class="form-group" id="cf-days-wrap" style="display:' + (c.frequency_mode === 'fixed' ? 'block' : 'none') + ';">' +
+      '<label>지정 요일 (선택한 개수 = 주 N회)</label>' +
+      '<div class="weekday-picker" id="cf-days">' +
+        WEEKDAY_LABELS.map((lbl, i) => {
+          const checked = (c.fixed_days || []).includes(i);
+          return '<label class="' + (checked ? 'checked' : '') + '" data-dow="' + i + '">' +
+            '<input type="checkbox" value="' + i + '"' + (checked ? ' checked' : '') + '><span>' + lbl + '</span>' +
+          '</label>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+
+  showModal(isEdit ? '클럽 편집' : '새 클럽 만들기', bodyHtml, {
+    saveText: isEdit ? '저장' : '만들기',
+    onMount: (bg) => {
+      // Color picker
+      bg.querySelectorAll('.color-swatch').forEach(sw => {
+        sw.addEventListener('click', () => {
+          bg.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+          sw.classList.add('selected');
+        });
+      });
+      // Type selector
+      bg.querySelectorAll('#cf-type label').forEach(lbl => {
+        lbl.addEventListener('click', () => {
+          bg.querySelectorAll('#cf-type label').forEach(l => l.classList.remove('checked'));
+          lbl.classList.add('checked');
+          lbl.querySelector('input').checked = true;
+          bg.querySelector('#cf-unit-wrap').style.display = lbl.dataset.type === 'number' ? 'block' : 'none';
+        });
+      });
+      // Mode toggle
+      bg.querySelectorAll('#cf-mode label').forEach(lbl => {
+        lbl.addEventListener('click', () => {
+          bg.querySelectorAll('#cf-mode label').forEach(l => l.classList.remove('checked'));
+          lbl.classList.add('checked');
+          lbl.querySelector('input').checked = true;
+          bg.querySelector('#cf-days-wrap').style.display = lbl.dataset.mode === 'fixed' ? 'block' : 'none';
+        });
+      });
+      // Weekday picker
+      bg.querySelectorAll('#cf-days label').forEach(lbl => {
+        lbl.addEventListener('click', (e) => {
+          e.preventDefault();
+          const inp = lbl.querySelector('input');
+          inp.checked = !inp.checked;
+          lbl.classList.toggle('checked', inp.checked);
+          const count = bg.querySelectorAll('#cf-days input:checked').length;
+          if (count > 0) bg.querySelector('#cf-freq').value = count;
+        });
+      });
+      // Auto-set freq from checked days on load if fixed mode
+      if (c.frequency_mode === 'fixed' && c.fixed_days && c.fixed_days.length) {
+        bg.querySelector('#cf-freq').value = c.fixed_days.length;
+      }
+    },
+    onSave: async (bg) => {
+      const name = bg.querySelector('#cf-name').value.trim();
+      const leader = bg.querySelector('#cf-leader').value.trim();
+      const startDate = bg.querySelector('#cf-start').value;
+      const color = bg.querySelector('.color-swatch.selected')?.dataset.color || '#2A9D8F';
+      const type = bg.querySelector('#cf-type input:checked')?.value || 'check';
+      const unit = bg.querySelector('#cf-unit').value.trim() || null;
+      const freq = parseInt(bg.querySelector('#cf-freq').value, 10);
+      const mode = bg.querySelector('#cf-mode input:checked')?.value || 'freeform';
+      const fixedDays = Array.from(bg.querySelectorAll('#cf-days input:checked')).map(x => parseInt(x.value, 10));
+
+      if (!name) { toast('클럽 이름을 입력하세요', true); return false; }
+      if (!startDate) { toast('시작 날짜를 선택하세요', true); return false; }
+      if (mode === 'fixed' && fixedDays.length !== freq) {
+        toast('지정 요일 개수(' + fixedDays.length + ')와 주 ' + freq + '회가 맞지 않습니다', true);
+        return false;
+      }
+
+      const payload = {
+        name, leader_name: leader || null,
+        start_date: startDate, color,
+        entry_type: type,
+        unit: type === 'number' ? unit : null,
+        frequency_per_week: freq,
+        frequency_mode: mode,
+        fixed_days: mode === 'fixed' ? fixedDays.sort((a,b) => a - b) : null,
+      };
+      // Period label (backward compat)
+      const s = parseDate(startDate);
+      const e = addDays(s, 8 * 7 - 1);
+      payload.period = fmtDateShort(s) + ' ~ ' + fmtDateShort(e);
+
+      if (isEdit) {
+        const { error } = await sb.from('clubs').update(payload).eq('id', club.id);
+        if (error) { toast('저장 실패: ' + error.message, true); return false; }
+        toast('저장됨');
+      } else {
+        payload.leader_token = genLeaderToken(name);
+        const { error } = await sb.from('clubs').insert(payload);
+        if (error) { toast('생성 실패: ' + error.message, true); return false; }
+        toast('클럽 생성 완료');
+      }
+      invalidateCache(); await loadAll(); route();
+      return true;
+    }
+  });
+}
+
+// ============ MEMBERS MODAL ============
+function openMembersModal(club) {
+  const memberships = membershipsOfClub(club.id);
+  const bodyHtml =
+    '<div class="form-group">' +
+      '<label>새 멤버 추가</label>' +
+      '<div class="form-row">' +
+        '<input type="text" id="mm-name" placeholder="이름 (예: 김민수)">' +
+        '<button class="btn primary" id="mm-add">추가</button>' +
+      '</div>' +
+      '<div class="hint">여러 명 한 번에: 콤마(,) 또는 줄바꿈으로 구분</div>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>현재 멤버 (' + memberships.length + '명)</label>' +
+      '<div class="member-list" id="mm-list"></div>' +
+    '</div>';
+
+  showModal(club.name + ' — 멤버 관리', bodyHtml, {
+    actions: false,
+    onMount: (bg) => {
+      const list = bg.querySelector('#mm-list');
+      function refresh() {
+        const ms = membershipsOfClub(club.id).map(m => ({ m, u: findUser(m.user_id) })).filter(x => x.u);
+        ms.sort((a, b) => (a.u.name || '').localeCompare(b.u.name || ''));
+        list.innerHTML = ms.length ? ms.map(x =>
+          '<div class="member-row" data-mid="' + x.m.id + '">' +
+            '<span class="name">' + escapeHtml(x.u.name) + '</span>' +
+            '<button class="del" data-del>삭제</button>' +
+          '</div>'
+        ).join('') : '<div class="empty" style="padding:20px;">아직 멤버가 없습니다</div>';
+        list.querySelectorAll('[data-del]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const row = btn.closest('.member-row');
+            const mid = row.dataset.mid;
+            const m = findMembership(mid);
+            const u = m && findUser(m.user_id);
+            if (!u) return;
+            if (!confirm('"' + u.name + '"을(를) 이 클럽에서 삭제할까요? 기록도 함께 사라집니다.')) return;
+            const { error } = await sb.from('memberships').delete().eq('id', mid);
+            if (error) return toast('실패: ' + error.message, true);
+            invalidateCache(); await loadAll();
+            refresh();
+            toast('삭제됨');
           });
         });
-      });
-    });
-  });
+      }
+      refresh();
 
-  // Leader URL: generate or show + copy + regenerate
-  body.querySelectorAll('[data-action="leader-url"]').forEach(b => {
-    b.addEventListener('click', async () => {
-      const club = findClub(b.dataset.id);
-      if (!club) return;
-
-      async function ensureToken(forceNew) {
-        if (club.leader_token && !forceNew) return club.leader_token;
-        const tok = genLeaderToken(club.name);
-        try {
-          const { data, error } = await sb.from('clubs').update({ leader_token: tok })
-            .eq('id', club.id).select().single();
-          if (error) throw error;
-          Object.assign(club, data);
-          return tok;
-        } catch (err) {
-          if (err.message && err.message.indexOf('leader_token') >= 0) {
-            toast('Supabase에 leader_token 컬럼을 먼저 만들어주세요 (안내 참고)', true);
-          } else {
-            toast('리더 URL 발급 실패: ' + (err.message || err), true);
+      bg.querySelector('#mm-add').addEventListener('click', async () => {
+        const raw = bg.querySelector('#mm-name').value.trim();
+        if (!raw) return;
+        const names = raw.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+        if (!names.length) return;
+        let added = 0, errors = 0;
+        for (const name of names) {
+          // Find or create user
+          let user = cache.users.find(u => u.name === name);
+          if (!user) {
+            const { data, error } = await sb.from('users').insert({ name, timezone: 'Asia/Seoul' }).select().single();
+            if (error) { errors++; continue; }
+            user = data;
+            cache.users.push(user);
           }
-          throw err;
+          // Check if already in club
+          const existing = cache.memberships.find(m => m.user_id === user.id && m.club_id === club.id);
+          if (existing) continue;
+          // Create membership
+          const { data: md, error: merr } = await sb.from('memberships').insert({
+            user_id: user.id, club_id: club.id, token: genMemberToken(),
+          }).select().single();
+          if (merr) { errors++; continue; }
+          cache.memberships.push(md);
+          added++;
         }
-      }
-
-      let token;
-      try { token = await ensureToken(false); } catch (e) { return; }
-      const baseUrl = location.origin + location.pathname + '#/leader/' + token;
-
-      const html =
-        '<div style="font-size:12px; color:var(--muted); line-height:1.7; margin-bottom:10px;">' +
-          '· <b>' + escapeHtml(club.name) + '</b> 리더 전용 페이지 URL이에요<br>' +
-          '· 이 URL을 가진 사람은 클럽 멤버 전체의 진행 현황을 컴팩트하게 볼 수 있어요<br>' +
-          '· 리더 외에는 공유하지 마세요. 유출되면 \'재발급\'으로 새 URL을 만들 수 있어요' +
-        '</div>' +
-        '<div class="form-row"><label>URL</label><input id="lu-url" readonly value="' + escapeHtml(baseUrl) + '"></div>' +
-        '<div style="text-align:right; margin-top:10px;">' +
-          '<button class="ghost-btn" data-lu-regen>URL 재발급</button> ' +
-          '<button class="ghost-btn" data-lu-copy>복사</button> ' +
-          '<a class="ghost-btn" data-lu-open href="' + escapeHtml(baseUrl) + '" target="_blank">열기</a>' +
-        '</div>';
-
-      showModal('리더 URL — ' + club.name, html, async () => { /* save = no-op, just close */ }, (modal) => {
-        modal.querySelector('[data-lu-copy]').addEventListener('click', () => {
-          const v = modal.querySelector('#lu-url').value;
-          navigator.clipboard.writeText(v).then(
-            () => toast('리더 URL 복사됨'),
-            () => toast('복사 실패', true)
-          );
-        });
-        modal.querySelector('[data-lu-regen]').addEventListener('click', async () => {
-          if (!confirm('새 URL을 발급하면 기존 URL은 더 이상 동작하지 않아요. 계속할까요?')) return;
-          try {
-            const newTok = await ensureToken(true);
-            const newUrl = location.origin + location.pathname + '#/leader/' + newTok;
-            modal.querySelector('#lu-url').value = newUrl;
-            modal.querySelector('[data-lu-open]').setAttribute('href', newUrl);
-            toast('재발급 완료');
-          } catch (e) {}
-        });
+        bg.querySelector('#mm-name').value = '';
+        refresh();
+        toast(added + '명 추가' + (errors ? ' · ' + errors + '개 실패' : ''));
+        // Also refresh dashboard progress numbers
+        setTimeout(() => { invalidateCache(); loadAll(); }, 100);
       });
-    });
+    }
   });
 }
 
-function genLeaderToken(clubName) {
-  const base = (clubName || 'leader').replace(/\s+/g, '').replace(/[^a-zA-Z0-9가-힣-]/g, '').slice(0, 14);
-  const rand = Math.random().toString(36).slice(2, 10);
-  return ('lead-' + base + '-' + rand).toLowerCase();
-}
-
-function renderAdminUsers(body) {
-  body.innerHTML =
-    '<div class="add-form">' +
-      '<div style="font-weight:500; margin-bottom:8px;">+ 새 사용자 추가</div>' +
-      '<div class="form-row"><label>이름</label><input id="uf-name" placeholder="예: 홍길동"></div>' +
-      '<div class="form-row"><label>시간대</label>' +
-        '<select id="uf-tz">' + TZ_OPTIONS.map(t => '<option>' + t + '</option>').join('') + '</select>' +
-      '</div>' +
-      '<div style="text-align:right; margin-top:10px;">' +
-        '<button class="primary-btn" id="uf-submit">생성</button>' +
-      '</div>' +
-    '</div>' +
-    '<details class="add-form" style="padding:14px 16px;">' +
-      '<summary style="font-weight:500; cursor:pointer;">+ CSV로 일괄 추가</summary>' +
-      '<div style="font-size:12px; color:var(--muted); padding:8px 0 4px; line-height:1.7;">' +
-        '· 형식: <code>이름,시간대,클럽이름</code> (한 줄에 한 명, 쉼표로 구분)<br>' +
-        '· 첫 줄에 헤더(이름,시간대,클럽이름)를 넣어도 자동으로 무시돼요<br>' +
-        '· <b>클럽이름은 이미 만들어둔 클럽과 정확히 일치해야 해요</b> (대소문자/공백 포함)<br>' +
-        '· 시간대 비우면 <code>Asia/Seoul</code>, 같은 사람·같은 클럽 중복은 건너뜀<br>' +
-        '· 엑셀에서 영역 복사 → 텍스트 에디터에 붙여넣기 → 저장(.csv) 으로 만들 수 있어요' +
-      '</div>' +
-      '<textarea id="ub-text" rows="6" placeholder="홍길동,Asia/Seoul,CEO의 책장&#10;김유진,Asia/Seoul,영어책 1챕터" ' +
-        'style="width:100%; min-height:120px; padding:10px 12px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; ' +
-        'font-size:12px; border:1px solid var(--border); border-radius:8px; box-sizing:border-box; resize:vertical;"></textarea>' +
-      '<div style="text-align:right; margin-top:10px;">' +
-        '<button class="ghost-btn" id="ub-template">샘플 채우기</button> ' +
-        '<button class="primary-btn" id="ub-submit">일괄 추가</button>' +
-      '</div>' +
-      '<div id="ub-result" style="margin-top:10px; font-size:12px; line-height:1.7;"></div>' +
-    '</details>' +
-    '<table class="admin-table">' +
-      '<thead><tr><th>이름</th><th>시간대</th><th>속한 클럽</th><th></th></tr></thead>' +
-      '<tbody>' +
-        cache.users.map(u => {
-          const ms = cache.memberships.filter(m => m.user_id === u.id);
-          return '<tr>' +
-            '<td>' + escapeHtml(u.name) + '</td>' +
-            '<td>' + escapeHtml(u.timezone) + '</td>' +
-            '<td>' + (ms.map(m => {
-              const c = findClub(m.club_id);
-              return c ? '<span class="color-dot" style="background:' + c.color + '"></span>' + escapeHtml(c.name) : '';
-            }).join(' &nbsp; ') || '<span style="color:var(--muted-2)">없음</span>') + '</td>' +
-            '<td class="actions">' +
-              '<button class="ghost-btn" data-action="edit-user" data-id="' + u.id + '">수정</button>' +
-              '<button class="ghost-btn" data-action="del-user" data-id="' + u.id + '">삭제</button>' +
-            '</td>' +
-          '</tr>';
-        }).join('') +
-      '</tbody>' +
-    '</table>';
-
-  body.querySelector('#uf-submit').addEventListener('click', async () => {
-    const name = body.querySelector('#uf-name').value.trim();
-    const tz = body.querySelector('#uf-tz').value;
-    if (!name) return toast('이름을 입력해주세요', true);
-    try {
-      const { data, error } = await sb.from('users').insert({ name, timezone: tz }).select().single();
-      if (error) throw error;
-      cache.users.push(data);
-      renderAdminUsers(body);
-      toast('사용자 생성됨');
-    } catch (err) { toast('생성 실패: ' + (err.message || err), true); }
-  });
-
-  // Bulk add via CSV
-  const tplBtn = body.querySelector('#ub-template');
-  if (tplBtn) tplBtn.addEventListener('click', () => {
-    const sample = cache.clubs[0];
-    body.querySelector('#ub-text').value =
-      '이름,시간대,클럽이름\n' +
-      '홍길동,Asia/Seoul,' + (sample ? sample.name : '여기에 클럽이름') + '\n' +
-      '김유진,Asia/Seoul,' + (sample ? sample.name : '여기에 클럽이름');
-  });
-  const ubBtn = body.querySelector('#ub-submit');
-  if (ubBtn) ubBtn.addEventListener('click', async () => {
-    const text = body.querySelector('#ub-text').value;
-    const resultEl = body.querySelector('#ub-result');
-    resultEl.innerHTML = '';
-    if (!text.trim()) { toast('CSV 내용을 입력해주세요', true); return; }
-    const rows = parseCSV(text);
-    if (!rows.length) { toast('읽을 행이 없어요', true); return; }
-    // Skip header row if first cell looks like '이름' / 'name'
-    let startIdx = 0;
-    const h0 = (rows[0][0] || '').toLowerCase();
-    if (h0 === '이름' || h0 === 'name') startIdx = 1;
-
-    let created = 0, addedMembers = 0, skippedDup = 0;
-    const errors = [];
-
-    for (let i = startIdx; i < rows.length; i++) {
-      const r = rows[i];
-      const lineNo = i + 1;
-      const name = (r[0] || '').trim();
-      const tz = (r[1] || 'Asia/Seoul').trim() || 'Asia/Seoul';
-      const clubName = (r[2] || '').trim();
-      if (!name) { errors.push(lineNo + '행: 이름이 비어있어요'); continue; }
-      if (!clubName) { errors.push(lineNo + '행 (' + name + '): 클럽이름이 비어있어요'); continue; }
-      const club = cache.clubs.find(c => c.name === clubName);
-      if (!club) { errors.push(lineNo + '행 (' + name + '): 클럽 "' + clubName + '"을 찾을 수 없어요'); continue; }
-
-      try {
-        // Find existing user (by name+tz) or create
-        let user = cache.users.find(u => u.name === name && u.timezone === tz);
-        if (!user) {
-          const { data, error } = await sb.from('users').insert({ name, timezone: tz }).select().single();
-          if (error) throw error;
-          cache.users.push(data);
-          user = data;
-          created++;
-        }
-
-        // Skip if membership already exists
-        if (cache.memberships.some(m => m.user_id === user.id && m.club_id === club.id)) {
-          skippedDup++; continue;
-        }
-
-        // Generate token (retry on collision)
-        let token = genToken(user.name, club.name), tries = 0;
-        while (cache.memberships.some(m => m.token === token) && tries < 5) {
-          token = genToken(user.name, club.name); tries++;
-        }
-        const { data: mData, error: mErr } = await sb.from('memberships').insert({
-          user_id: user.id, club_id: club.id, token
-        }).select().single();
-        if (mErr) throw mErr;
-        cache.memberships.push(mData);
-        addedMembers++;
-      } catch (err) {
-        errors.push(lineNo + '행 (' + name + '): ' + (err.message || err));
-      }
-    }
-
-    let html = '<div style="color:var(--text);"><b>' +
-      '✓ 새 사용자 ' + created + '명, 멤버십 ' + addedMembers + '건 추가</b>' +
-      (skippedDup ? ' / 중복 ' + skippedDup + '건 건너뜀' : '') +
-      '</div>';
-    if (errors.length) {
-      html += '<div style="color:#c0392b; margin-top:6px;">⚠ 오류 ' + errors.length + '건:<br>' +
-        errors.slice(0, 20).map(e => '· ' + escapeHtml(e)).join('<br>') +
-        (errors.length > 20 ? '<br>… 외 ' + (errors.length - 20) + '건' : '') +
-        '</div>';
-    }
-    resultEl.innerHTML = html;
-
-    if (addedMembers > 0 || created > 0) {
-      toast('일괄 추가 완료');
-      renderAdminUsers(body);
-      // Re-show details + result after re-render
-      const det = body.querySelector('details');
-      if (det) det.open = true;
-      const res = body.querySelector('#ub-result');
-      if (res) res.innerHTML = html;
-    }
-  });
-  body.querySelectorAll('[data-action="del-user"]').forEach(b => {
-    b.addEventListener('click', async () => {
-      const id = b.dataset.id;
-      if (!confirm('이 사용자와 모든 멤버십·기록을 삭제할까요?')) return;
-      try {
-        const { error } = await sb.from('users').delete().eq('id', id);
-        if (error) throw error;
-        invalidateCache();
-        await loadAll();
-        renderAdminUsers(body);
-      } catch (err) { toast('삭제 실패: ' + (err.message || err), true); }
-    });
-  });
-
-  body.querySelectorAll('[data-action="edit-user"]').forEach(b => {
-    b.addEventListener('click', () => {
-      const user = findUser(b.dataset.id);
-      if (!user) return;
-      const html =
-        '<div class="form-row"><label>이름</label><input id="eu-name" value="' + escapeHtml(user.name) + '"></div>' +
-        '<div class="form-row"><label>시간대</label>' +
-          '<select id="eu-tz">' +
-            TZ_OPTIONS.map(t => '<option' + (t === user.timezone ? ' selected' : '') + '>' + t + '</option>').join('') +
-          '</select>' +
-        '</div>';
-      showModal('사용자 수정', html, async (modal) => {
-        const name = modal.querySelector('#eu-name').value.trim();
-        const tz = modal.querySelector('#eu-tz').value;
-        if (!name) { toast('이름을 입력해주세요', true); return false; }
-        try {
-          const { data, error } = await sb.from('users').update({
-            name, timezone: tz
-          }).eq('id', user.id).select().single();
-          if (error) throw error;
-          Object.assign(user, data);
-          toast('수정됨');
-          renderAdminUsers(body);
-        } catch (err) { toast('수정 실패: ' + (err.message || err), true); return false; }
-      });
-    });
-  });
-}
-
-function genToken(name, clubName) {
-  const base = (name + '-' + clubName).replace(/\s+/g, '').replace(/[^a-zA-Z0-9가-힣-]/g, '').slice(0, 18);
-  const rand = Math.random().toString(36).slice(2, 6);
-  return (base + '-' + rand).toLowerCase();
-}
-
-function renderAdminMemberships(body) {
-  body.innerHTML =
-    '<div class="add-form">' +
-      '<div style="font-weight:500; margin-bottom:8px;">+ 멤버십 추가 (사용자를 클럽에 배정)</div>' +
-      '<div class="form-row"><label>사용자</label>' +
-        '<select id="mf-user">' + cache.users.map(u => '<option value="' + u.id + '">' + escapeHtml(u.name) + '</option>').join('') + '</select>' +
-      '</div>' +
-      '<div class="form-row"><label>클럽</label>' +
-        '<select id="mf-club">' + cache.clubs.map(c => '<option value="' + c.id + '">' + escapeHtml(c.name) + ' (' + escapeHtml(c.period) + ')</option>').join('') + '</select>' +
-      '</div>' +
-      '<div style="text-align:right; margin-top:10px;">' +
-        '<button class="primary-btn" id="mf-submit">URL 발급</button>' +
-      '</div>' +
-    '</div>' +
-    '<div style="display:flex; justify-content:space-between; align-items:center; margin: 4px 4px 12px;">' +
-      '<div style="font-size:12px; color:var(--muted);">총 ' + cache.memberships.length + '건</div>' +
-      '<button class="ghost-btn" id="mm-export">URL 목록 CSV 다운로드</button>' +
-    '</div>' +
-    '<table class="admin-table">' +
-      '<thead><tr><th>사용자</th><th>클럽</th><th>URL</th><th>진행률</th><th></th></tr></thead>' +
-      '<tbody>' +
-        cache.memberships.map(m => {
-          const u = findUser(m.user_id), c = findClub(m.club_id);
-          if (!u || !c) return '';
-          const url = location.origin + location.pathname + '#/t/' + m.token;
-          return '<tr>' +
-            '<td>' + escapeHtml(u.name) + '</td>' +
-            '<td><span class="color-dot" style="background:' + c.color + '"></span>' + escapeHtml(c.name) + '</td>' +
-            '<td><span class="url-pill" data-action="copy-url" data-url="' + escapeHtml(url) + '" title="클릭해서 복사">#/t/' + escapeHtml(m.token) + '</span></td>' +
-            '<td>' + membershipPct(m) + '%</td>' +
-            '<td class="actions">' +
-              '<a class="ghost-btn" href="#/t/' + escapeHtml(m.token) + '">열기</a>' +
-              '<button class="ghost-btn" data-action="msg" data-id="' + m.id + '">카톡 텍스트</button>' +
-              '<button class="ghost-btn" data-action="edit-membership" data-id="' + m.id + '">수정</button>' +
-              '<button class="ghost-btn" data-action="regen" data-id="' + m.id + '">URL 재생성</button>' +
-              '<button class="ghost-btn" data-action="del-membership" data-id="' + m.id + '">삭제</button>' +
-            '</td>' +
-          '</tr>';
-        }).join('') +
-      '</tbody>' +
-    '</table>';
-
-  body.querySelector('#mf-submit').addEventListener('click', async () => {
-    const userId = body.querySelector('#mf-user').value;
-    const clubId = body.querySelector('#mf-club').value;
-    if (!userId || !clubId) return;
-    if (cache.memberships.some(m => m.user_id === userId && m.club_id === clubId)) {
-      return toast('이미 이 클럽에 가입되어 있어요', true);
-    }
-    const u = findUser(userId), c = findClub(clubId);
-    let token = genToken(u.name, c.name), tries = 0;
-    while (cache.memberships.some(m => m.token === token) && tries < 5) {
-      token = genToken(u.name, c.name); tries++;
-    }
-    try {
-      const { data, error } = await sb.from('memberships').insert({
-        user_id: userId, club_id: clubId, token
-      }).select().single();
-      if (error) throw error;
-      cache.memberships.push(data);
-      renderAdminMemberships(body);
-      toast('URL 발급 완료');
-    } catch (err) { toast('생성 실패: ' + (err.message || err), true); }
-  });
-
-  body.querySelectorAll('[data-action="copy-url"]').forEach(b => {
-    b.addEventListener('click', () => {
-      navigator.clipboard.writeText(b.dataset.url).then(
-        () => toast('URL 복사됨'),
-        () => toast('복사 실패 — 직접 선택해 복사해주세요', true)
-      );
-    });
-  });
-
-  // Export URL list as CSV
-  const expBtn = body.querySelector('#mm-export');
-  if (expBtn) expBtn.addEventListener('click', () => {
-    if (!cache.memberships.length) { toast('내보낼 멤버십이 없어요', true); return; }
-    const rows = [['이름', '시간대', '클럽', '기간', '토큰', 'URL', '진행률(%)']];
-    // Sort: club name → user name
-    const sorted = [...cache.memberships].sort((a, b) => {
-      const ca = findClub(a.club_id), cb = findClub(b.club_id);
-      const ua = findUser(a.user_id), ub = findUser(b.user_id);
-      const cn = (ca ? ca.name : '').localeCompare(cb ? cb.name : '');
-      if (cn) return cn;
-      return (ua ? ua.name : '').localeCompare(ub ? ub.name : '');
-    });
-    sorted.forEach(m => {
-      const u = findUser(m.user_id), c = findClub(m.club_id);
-      if (!u || !c) return;
-      const url = location.origin + location.pathname + '#/t/' + m.token;
-      rows.push([u.name, u.timezone || '', c.name, c.period || '', m.token, url, String(membershipPct(m))]);
-    });
-    const today = new Date().toISOString().slice(0, 10);
-    downloadCSV('bys-tracker-urls-' + today + '.csv', rows);
-    toast('CSV 다운로드 시작');
-  });
-  body.querySelectorAll('[data-action="msg"]').forEach(b => {
-    b.addEventListener('click', () => {
-      const m = findMembership(b.dataset.id);
-      const u = findUser(m.user_id); const c = findClub(m.club_id);
-      const url = location.origin + location.pathname + '#/t/' + m.token;
-      const text = '안녕 ' + u.name + '님!\n' + c.name + ' (' + c.period + ') 트래커예요 :)\n매일 한 번씩 들러서 체크해주세요 ✓\n' + url;
-      navigator.clipboard.writeText(text).then(
-        () => toast('메시지 텍스트 복사됨'),
-        () => toast('복사 실패', true)
-      );
-    });
-  });
-  body.querySelectorAll('[data-action="regen"]').forEach(b => {
-    b.addEventListener('click', async () => {
-      const m = findMembership(b.dataset.id);
-      const u = findUser(m.user_id); const c = findClub(m.club_id);
-      let token = genToken(u.name, c.name);
-      try {
-        const { data, error } = await sb.from('memberships').update({ token }).eq('id', m.id).select().single();
-        if (error) throw error;
-        Object.assign(m, data);
-        renderAdminMemberships(body);
-        toast('URL 재발급');
-      } catch (err) { toast('재발급 실패: ' + (err.message || err), true); }
-    });
-  });
-  body.querySelectorAll('[data-action="del-membership"]').forEach(b => {
-    b.addEventListener('click', async () => {
-      const id = b.dataset.id;
-      if (!confirm('이 멤버십과 데이터를 삭제할까요?')) return;
-      try {
-        const { error } = await sb.from('memberships').delete().eq('id', id);
-        if (error) throw error;
-        invalidateCache();
-        await loadAll();
-        renderAdminMemberships(body);
-      } catch (err) { toast('삭제 실패: ' + (err.message || err), true); }
-    });
-  });
-
-  body.querySelectorAll('[data-action="edit-membership"]').forEach(b => {
-    b.addEventListener('click', () => {
-      const m = findMembership(b.dataset.id);
-      if (!m) return;
-      const u = findUser(m.user_id), c = findClub(m.club_id);
-      const html =
-        '<div class="form-row"><label>사용자</label><div style="color:var(--muted)">' + escapeHtml(u ? u.name : '?') + '</div></div>' +
-        '<div class="form-row"><label>클럽</label><div style="color:var(--muted)">' + escapeHtml(c ? c.name : '?') + '</div></div>' +
-        '<div class="form-row"><label>URL 토큰</label><input id="em-token" value="' + escapeHtml(m.token) + '"></div>' +
-        '<div style="font-size:11px; color:var(--muted); padding: 6px 0 0; line-height:1.5">' +
-          '· 영문 소문자/숫자/한글/하이픈만 권장<br>' +
-          '· 토큰을 바꾸면 기존 링크는 더 이상 동작하지 않아요<br>' +
-          '· 자동으로 새 토큰을 만들고 싶으면 \'URL 재생성\' 버튼을 사용하세요' +
-        '</div>';
-      showModal('멤버십 수정', html, async (modal) => {
-        const token = modal.querySelector('#em-token').value.trim();
-        if (!token) { toast('토큰을 입력해주세요', true); return false; }
-        if (token === m.token) { toast('변경된 내용 없음'); return; }
-        if (cache.memberships.some(x => x.id !== m.id && x.token === token)) {
-          toast('이미 사용 중인 토큰이에요', true); return false;
-        }
-        try {
-          const { data, error } = await sb.from('memberships').update({ token })
-            .eq('id', m.id).select().single();
-          if (error) throw error;
-          Object.assign(m, data);
-          toast('수정됨');
-          renderAdminMemberships(body);
-        } catch (err) { toast('수정 실패: ' + (err.message || err), true); return false; }
-      });
-    });
-  });
-}
-
-function renderAdminSettings(body) {
-  body.innerHTML =
-    '<div class="add-form">' +
-      '<div style="font-weight:500; margin-bottom:8px;">관리자 비밀번호</div>' +
-      '<div class="form-row"><label>새 비밀번호</label><input id="sf-admin" type="text" placeholder="(현재) ' + escapeHtml(cache.settings.admin_password || '') + '"></div>' +
-      '<div style="text-align:right; margin-top:6px;">' +
-        '<button class="primary-btn" id="sf-admin-save">저장</button>' +
-      '</div>' +
-    '</div>' +
-    '<div class="add-form">' +
-      '<div style="font-weight:500; margin-bottom:8px;">BYS 멤버 비밀번호 (모든 클럽 보기)</div>' +
-      '<div class="form-row"><label>새 비밀번호</label><input id="sf-member" type="text" placeholder="(현재) ' + escapeHtml(cache.settings.member_gate_password || '') + '"></div>' +
-      '<div style="text-align:right; margin-top:6px;">' +
-        '<button class="primary-btn" id="sf-member-save">저장</button>' +
-      '</div>' +
-    '</div>' +
-    '<div style="font-size:12px; color:var(--muted); padding: 12px 4px;">' +
-      '⚠ 처음에는 기본 비밀번호(<code>CHANGE-ME-ADMIN</code>, <code>CHANGE-ME-MEMBER</code>)로 되어 있어요. 꼭 바꿔주세요.' +
-    '</div>';
-
-  async function saveSetting(key, value) {
-    if (!value) return toast('비밀번호를 입력해주세요', true);
-    try {
-      const { error } = await sb.from('app_settings').upsert({ key, value }, { onConflict: 'key' });
-      if (error) throw error;
-      cache.settings[key] = value;
-      toast('저장됨');
-      renderAdminSettings(body);
-    } catch (err) { toast('저장 실패: ' + (err.message || err), true); }
+// ============ LEADER VIEW ============
+function renderLeader(token) {
+  const club = clubByLeaderToken(token);
+  if (!club) {
+    const w = document.createElement('div');
+    w.className = 'container';
+    w.innerHTML = '<div class="empty">클럽을 찾을 수 없습니다.<br><br><a href="#/admin" style="color:var(--primary); font-weight:600;">관리자로 이동 →</a></div>';
+    return w;
   }
-  body.querySelector('#sf-admin-save').addEventListener('click', () =>
-    saveSetting('admin_password', body.querySelector('#sf-admin').value.trim())
-  );
-  body.querySelector('#sf-member-save').addEventListener('click', () =>
-    saveSetting('member_gate_password', body.querySelector('#sf-member').value.trim())
-  );
+
+  const wrap = document.createElement('div');
+  wrap.className = 'container';
+
+  const memberships = membershipsOfClub(club.id).map(m => ({ m, u: findUser(m.user_id) })).filter(x => x.u);
+  memberships.sort((a, b) => (a.u.name || '').localeCompare(b.u.name || ''));
+
+  const prog = clubProgress(club);
+  const period = getClubPeriod(club);
+  const currentWeek = getCurrentWeek(club);
+  const color = club.color || '#2A9D8F';
+
+  const canToggleNumbers = club.entry_type === 'number' || club.entry_type === 'count';
+  const showNumbers = localStorage.getItem('bys.v3.showNums.' + club.id) === '1';
+
+  wrap.innerHTML =
+    '<div class="leader-topbar">' +
+      '<a href="#/admin">← 관리자로</a>' +
+    '</div>' +
+    '<div class="leader-header">' +
+      '<div class="title-row">' +
+        '<div class="title-dot" style="background:' + escapeHtml(color) + '"></div>' +
+        '<h1>' + escapeHtml(club.name || '') + '</h1>' +
+      '</div>' +
+      '<div class="meta">' +
+        (period.start ? '<b>' + fmtDateFull(period.start) + '</b> ~ <b>' + fmtDateFull(period.end) + '</b>' : '기간 미설정') +
+        ' · ' + getFreqLabel(club) +
+        (club.leader_name ? ' · 리더 ' + escapeHtml(club.leader_name) : '') +
+        (currentWeek ? '<span class="current-week-badge" style="background:' + escapeHtml(color) + '22; color:' + escapeHtml(color) + '">현재 W' + currentWeek + '</span>' : '') +
+      '</div>' +
+      '<div class="progress-lg">' +
+        '<div class="progress"><div class="progress-fill" style="width:' + prog.pct + '%; background:' + escapeHtml(color) + '"></div></div>' +
+        '<div class="pct-big" style="color:' + escapeHtml(color) + '">' + prog.pct + '%</div>' +
+      '</div>' +
+    '</div>' +
+    (canToggleNumbers ?
+      '<div class="toggle-row">' +
+        '<label><input type="checkbox" id="show-nums"' + (showNumbers ? ' checked' : '') + '> 셀에 숫자 표시</label>' +
+      '</div>' : '') +
+    '<div id="weeks-wrap"></div>';
+
+  const weeksWrap = wrap.querySelector('#weeks-wrap');
+  for (let w = 1; w <= 8; w++) {
+    weeksWrap.appendChild(renderWeekSection(club, w, memberships, showNumbers, currentWeek));
+  }
+
+  // Cell interaction
+  wrap.addEventListener('click', async (e) => {
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+    const mid = cell.dataset.mid;
+    const week = parseInt(cell.dataset.week, 10);
+    const slot = parseInt(cell.dataset.slot, 10);
+    const m = findMembership(mid);
+    if (!m) return;
+    await handleCellClick(club, m, week, slot, wrap);
+  });
+
+  const toggle = wrap.querySelector('#show-nums');
+  if (toggle) {
+    toggle.addEventListener('change', () => {
+      localStorage.setItem('bys.v3.showNums.' + club.id, toggle.checked ? '1' : '0');
+      route();
+    });
+  }
+
+  return wrap;
 }
 
-// ============ Boot ============
-route();
+function renderWeekSection(club, week, memberships, showNumbers, currentWeek) {
+  const section = document.createElement('div');
+  section.className = 'week-section';
+  const range = getWeekRange(club, week);
+  const wp = clubWeekProgress(club, week);
+  const isCurrent = week === currentWeek;
+  const color = club.color || '#2A9D8F';
+
+  const memberBlocks = memberships.map(({ m, u }) => {
+    const mp = membershipWeekProgress(m, club, week);
+    const cells = renderCellRow(club, m, week, showNumbers);
+    return '<div class="member-block">' +
+      '<div class="name-row">' +
+        '<div class="name">' + escapeHtml(u.name) + '</div>' +
+        '<div class="m-progress"><b>' + mp.filled + '</b> / ' + mp.total + '</div>' +
+      '</div>' +
+      '<div class="cell-row">' + cells + '</div>' +
+    '</div>';
+  }).join('');
+
+  section.innerHTML =
+    '<div class="week-head' + (isCurrent ? ' is-current' : '') + '">' +
+      '<div>' +
+        '<span class="w-label">W' + week + '</span>' +
+        '<span class="w-dates">' + fmtDateWithDay(range.start) + ' ~ ' + fmtDateWithDay(range.end) + '</span>' +
+      '</div>' +
+      '<div class="w-progress"><b>' + wp.filled + '</b> / ' + wp.total + '</div>' +
+    '</div>' +
+    (memberBlocks || '<div class="empty" style="padding:20px;">아직 멤버가 없습니다</div>');
+
+  return section;
+}
+
+function renderCellRow(club, membership, week, showNumbers) {
+  const freq = club.frequency_per_week || 7;
+  let cells = '';
+  for (let s = 0; s < freq; s++) {
+    const entry = entryOf(membership.id, week, s);
+    const filled = hasValue(entry);
+    const slotDate = getSlotDate(club, week, s, entry);
+
+    let display = '';
+    if (filled) {
+      const v = entry.value;
+      if (club.entry_type === 'number') {
+        display = showNumbers ? String(v.n) : '<span class="cell-value circle"></span>';
+      } else if (club.entry_type === 'count') {
+        display = showNumbers ? String(v.count) : '<span class="cell-value circle"></span>';
+      } else {
+        display = '<span class="cell-value circle"></span>';
+      }
+    } else {
+      display = '<span class="cell-value empty"></span>';
+    }
+    const dateLabel = slotDate ? fmtDateWithDay(slotDate) : '—';
+
+    cells += '<button class="cell ' + (filled ? 'done' : '') + '" ' +
+      'data-mid="' + membership.id + '" data-week="' + week + '" data-slot="' + s + '">' +
+      (filled && (club.entry_type === 'number' || club.entry_type === 'count') && showNumbers
+        ? '<span class="cell-value">' + escapeHtml(display) + '</span>'
+        : display) +
+      '<span class="cell-date">' + dateLabel + '</span>' +
+    '</button>';
+  }
+  return cells;
+}
+
+// ============ CELL CLICK HANDLERS ============
+async function handleCellClick(club, membership, week, slot, wrap) {
+  const type = club.entry_type || 'check';
+  if (type === 'check') return handleCheckClick(club, membership, week, slot);
+  if (type === 'number') return openNumberModal(club, membership, week, slot);
+  if (type === 'count') return openCountModal(club, membership, week, slot);
+}
+
+async function handleCheckClick(club, membership, week, slot) {
+  const entry = entryOf(membership.id, week, slot);
+  const filled = hasValue(entry);
+  if (filled) return saveEntry(club, membership, week, slot, null); // clear
+  return saveEntry(club, membership, week, slot, { state: 'done' });
+}
+
+function openNumberModal(club, membership, week, slot) {
+  const entry = entryOf(membership.id, week, slot);
+  const current = entry && entry.value && typeof entry.value.n === 'number' ? entry.value.n : '';
+  const slotDate = getSlotDate(club, week, slot, entry);
+  const unit = club.unit || '';
+
+  const dateInputHtml = (club.frequency_mode === 'freeform') ?
+    '<div class="form-group">' +
+      '<label>날짜 (선택사항)</label>' +
+      '<input type="date" id="nm-date" value="' + (slotDate ? dateStr(slotDate) : dateStr(new Date())) + '">' +
+      '<div class="hint">체크한 실제 날짜</div>' +
+    '</div>' : '';
+
+  showModal(findUser(membership.user_id).name + ' · W' + week + ' 슬롯' + (slot + 1),
+    '<div class="form-group">' +
+      '<label>값 ' + (unit ? '(' + escapeHtml(unit) + ')' : '') + '</label>' +
+      '<input type="number" step="0.1" class="number-input-large" id="nm-value" value="' + escapeHtml(current) + '" autofocus>' +
+    '</div>' +
+    dateInputHtml,
+    {
+      cancelText: '비우기',
+      onSave: async (bg) => {
+        const raw = bg.querySelector('#nm-value').value.trim();
+        if (!raw) {
+          await saveEntry(club, membership, week, slot, null);
+          return true;
+        }
+        const n = parseFloat(raw);
+        if (isNaN(n)) { toast('숫자를 입력하세요', true); return false; }
+        const dateEl = bg.querySelector('#nm-date');
+        const date = dateEl ? dateEl.value : null;
+        await saveEntry(club, membership, week, slot, { n }, date);
+        return true;
+      }
+    }
+  );
+  // Repurpose cancel to clear
+  setTimeout(() => {
+    const cancelBtn = document.querySelector('.modal-bg [data-cancel]');
+    if (cancelBtn) {
+      const orig = cancelBtn.onclick;
+      cancelBtn.onclick = null;
+      cancelBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await saveEntry(club, membership, week, slot, null);
+        cancelBtn.closest('.modal-bg').remove();
+      });
+    }
+  }, 40);
+}
+
+function openCountModal(club, membership, week, slot) {
+  const entry = entryOf(membership.id, week, slot);
+  let count = entry && entry.value && typeof entry.value.count === 'number' ? entry.value.count : 0;
+  const slotDate = getSlotDate(club, week, slot, entry);
+
+  const dateInputHtml = (club.frequency_mode === 'freeform') ?
+    '<div class="form-group">' +
+      '<label>날짜</label>' +
+      '<input type="date" id="cm-date" value="' + (slotDate ? dateStr(slotDate) : dateStr(new Date())) + '">' +
+    '</div>' : '';
+
+  showModal(findUser(membership.user_id).name + ' · W' + week + ' 슬롯' + (slot + 1),
+    '<div class="count-controls">' +
+      '<button class="count-btn" id="cm-minus">−</button>' +
+      '<div class="count-display" id="cm-count">' + count + '</div>' +
+      '<button class="count-btn primary" id="cm-plus">+</button>' +
+    '</div>' +
+    dateInputHtml,
+    {
+      cancelText: '비우기',
+      onMount: (bg) => {
+        const display = bg.querySelector('#cm-count');
+        bg.querySelector('#cm-plus').addEventListener('click', () => { count++; display.textContent = count; });
+        bg.querySelector('#cm-minus').addEventListener('click', () => { if (count > 0) count--; display.textContent = count; });
+      },
+      onSave: async (bg) => {
+        if (count <= 0) {
+          await saveEntry(club, membership, week, slot, null);
+        } else {
+          const dateEl = bg.querySelector('#cm-date');
+          const date = dateEl ? dateEl.value : null;
+          await saveEntry(club, membership, week, slot, { count }, date);
+        }
+        return true;
+      }
+    }
+  );
+  setTimeout(() => {
+    const cancelBtn = document.querySelector('.modal-bg [data-cancel]');
+    if (cancelBtn) {
+      cancelBtn.onclick = null;
+      cancelBtn.addEventListener('click', async () => {
+        await saveEntry(club, membership, week, slot, null);
+        cancelBtn.closest('.modal-bg').remove();
+      });
+    }
+  }, 40);
+}
+
+// ============ SAVE ENTRY ============
+async function saveEntry(club, membership, week, slot, value, dateOverride) {
+  const ts = new Date().toISOString();
+  const isDelete = value === null;
+
+  // For freeform: auto-assign today's date if none provided and value present
+  let date = dateOverride || null;
+  if (!isDelete && !date) {
+    if (club.frequency_mode === 'freeform') {
+      const existing = entryOf(membership.id, week, slot);
+      date = existing && existing.date ? existing.date : dateStr(new Date());
+    } else {
+      const d = getSlotDate(club, week, slot, null);
+      date = d ? dateStr(d) : null;
+    }
+  }
+
+  // Optimistic cache update
+  if (isDelete) {
+    cache.entries = cache.entries.filter(e =>
+      !(e.membership_id === membership.id && e.week === week && e.slot === slot)
+    );
+  } else {
+    const existing = cache.entries.find(e =>
+      e.membership_id === membership.id && e.week === week && e.slot === slot
+    );
+    if (existing) { existing.value = value; existing.date = date; existing.updated_at = ts; }
+    else cache.entries.push({
+      id: 'temp_' + Math.random().toString(36).slice(2, 9),
+      membership_id: membership.id, week, slot, date, value, updated_at: ts,
+    });
+  }
+
+  // Re-render leader view (fast, in-memory)
+  route();
+
+  // Pending queue
+  const op = { action: isDelete ? 'delete' : 'upsert', membership_id: membership.id, week, slot, date, value, ts };
+  pendingAdd(op);
+  dbg((isDelete ? '삭제' : '저장') + ' 시작: W' + week + 'S' + slot);
+
+  try {
+    if (isDelete) {
+      const { error } = await sb.from('entries').delete()
+        .eq('membership_id', membership.id).eq('week', week).eq('slot', slot);
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from('entries').upsert({
+        membership_id: membership.id, week, slot, date, value, updated_at: ts,
+      }, { onConflict: 'membership_id,week,slot' });
+      if (error) throw error;
+    }
+    pendingRemove(op);
+    dbg('✅ ' + (isDelete ? '삭제' : '저장') + ' 완료');
+    flashSave();
+  } catch (err) {
+    console.error(err);
+    dbg('❌ ' + (err.message || err));
+    flashSave(true);
+    toast('저장 실패 (큐 보관): ' + (err.message || err), true);
+  }
+}
+
+// ============ INIT ============
+document.addEventListener('DOMContentLoaded', route);
+if (document.readyState !== 'loading') route();
 </script>
 </body>
 </html>
