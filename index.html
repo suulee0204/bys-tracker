@@ -247,6 +247,64 @@ a { color: inherit; text-decoration: none; }
 .toggle-row label { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
 .toggle-row input { width: 18px; height: 18px; accent-color: var(--primary); }
 
+/* ==== LEADER: VIEW TABS (오늘 체크 / 전체보기) ==== */
+.view-tabs {
+  display: flex; gap: 18px; margin-bottom: 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.tab-btn {
+  padding: 10px 2px; margin-bottom: -1px;
+  font-weight: 700; font-size: 15px; color: var(--muted);
+  border-bottom: 2px solid transparent;
+}
+.tab-btn.active { color: var(--text); border-bottom-color: var(--primary); }
+
+/* ==== LEADER: TODAY QUICK-CHECK LIST ==== */
+.today-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+.today-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  background: var(--bg); border: 1px solid var(--line-soft);
+  border-radius: 14px; padding: 12px 16px;
+}
+.today-row-info .name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+.today-row-info .m-progress { font-size: 12px; color: var(--muted); }
+.today-row-info .m-progress b { color: var(--text-soft); font-weight: 700; }
+.today-cell {
+  flex: 0 0 auto; min-width: 72px; min-height: 72px;
+  padding: 8px; border-radius: 16px;
+}
+.today-cell .cell-value.circle::before,
+.today-cell .cell-value.pending::before { width: 30px; height: 30px; }
+.today-cell .cell-value { font-size: 26px; }
+.today-note {
+  font-size: 13px; color: var(--muted-2); padding: 10px 4px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.today-note.done { color: var(--primary); font-weight: 700; }
+
+/* ==== BOARD: 전체 현황판 (읽기 전용, 멤버 공유용) ==== */
+.board-list { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+.board-row {
+  background: var(--bg); border: 1px solid var(--line-soft);
+  border-radius: 14px; padding: 14px 16px;
+}
+.board-row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 10px; }
+.board-name { font-weight: 700; font-size: 16px; color: var(--text); }
+.board-pct { font-weight: 800; font-size: 15px; flex-shrink: 0; }
+.board-row .progress { height: 6px; margin-bottom: 10px; }
+.board-weeks { display: flex; gap: 6px; }
+.board-week {
+  flex: 1; height: 10px; border-radius: 4px; background: var(--line-soft);
+}
+.board-week.half { background: var(--primary); opacity: 0.45; }
+.board-week.full { background: var(--primary); opacity: 1; }
+.board-week.current { box-shadow: 0 0 0 2px var(--text-soft) inset; }
+
+/* Read-only cell (개인 기록 페이지: 클릭 불가) */
+.cell.ro { cursor: default; }
+.cell.ro:hover { border-color: var(--line); box-shadow: none; }
+.cell.ro:active { transform: none; }
+
 /* Week sections */
 .week-section { margin-bottom: 32px; }
 .week-head {
@@ -310,7 +368,7 @@ a { color: inherit; text-decoration: none; }
   content: ''; display: block; width: 22px; height: 22px;
   border-radius: 50%; background: currentColor;
 }
-.cell-value.empty::before {
+.cell-value.pending::before {
   content: ''; display: block; width: 22px; height: 22px;
   border-radius: 50%; border: 2px solid var(--muted-2);
   background: transparent;
@@ -678,6 +736,49 @@ function membershipWeekProgress(membership, club, week) {
   ).length;
   return { filled, total, pct: total ? Math.round(filled / total * 100) : 0 };
 }
+
+// Is today one of this club's activity days? (fixed-schedule clubs only; freeform clubs are "always on")
+function isTodayScheduled(club, currentWeek) {
+  if (!currentWeek) return false;
+  if (club.frequency_mode !== 'fixed') return true;
+  const todayStr = dateStr(new Date());
+  const freq = club.frequency_per_week || 7;
+  for (let s = 0; s < freq; s++) {
+    const d = getSlotDate(club, currentWeek, s, null);
+    if (d && dateStr(d) === todayStr) return true;
+  }
+  return false;
+}
+
+// Resolve which (week, slot) represents "today" for a membership, for the 오늘 체크 quick view
+function getTodaySlotInfo(club, membership, currentWeek) {
+  const todayStr = dateStr(new Date());
+  const freq = club.frequency_per_week || 7;
+  if (club.frequency_mode === 'fixed') {
+    for (let s = 0; s < freq; s++) {
+      const d = getSlotDate(club, currentWeek, s, null);
+      if (d && dateStr(d) === todayStr) {
+        return { status: 'today', week: currentWeek, slot: s, entry: entryOf(membership.id, currentWeek, s) };
+      }
+    }
+    return { status: 'week-complete' };
+  }
+  // freeform: prefer an entry already dated today, otherwise the next empty slot this week
+  for (let s = 0; s < freq; s++) {
+    const entry = entryOf(membership.id, currentWeek, s);
+    if (entry && entry.date === todayStr) {
+      return { status: 'today', week: currentWeek, slot: s, entry };
+    }
+  }
+  for (let s = 0; s < freq; s++) {
+    const entry = entryOf(membership.id, currentWeek, s);
+    if (!hasValue(entry)) {
+      return { status: 'today', week: currentWeek, slot: s, entry };
+    }
+  }
+  return { status: 'week-complete' };
+}
+
 function clubProgress(club) {
   const memberships = membershipsOfClub(club.id);
   if (!memberships.length) return { filled: 0, total: 0, pct: 0 };
@@ -884,6 +985,10 @@ async function route() {
   try {
     if (hash.startsWith('#/leader/')) {
       view = renderLeader(decodeURIComponent(hash.slice(9)));
+    } else if (hash.startsWith('#/board/')) {
+      view = renderBoard(decodeURIComponent(hash.slice(8)));
+    } else if (hash.startsWith('#/me/')) {
+      view = renderMemberPage(decodeURIComponent(hash.slice(5)));
     } else {
       view = adminGatePassed() ? renderAdmin() : renderAdminGate();
     }
@@ -978,6 +1083,7 @@ function renderClubCard(club) {
   const freqLabel = getFreqLabel(club);
   const typeLabel = getTypeLabel(club);
   const leaderUrl = club.leader_token ? (location.origin + location.pathname + '#/leader/' + club.leader_token) : null;
+  const boardUrl = club.leader_token ? (location.origin + location.pathname + '#/board/' + club.leader_token) : null;
 
   card.innerHTML =
     '<div class="card-head">' +
@@ -1005,8 +1111,14 @@ function renderClubCard(club) {
           '<span class="url">' + escapeHtml(leaderUrl) + '</span>' +
           '<button class="btn small ghost" data-copy>복사</button>' +
         '</div>' : '') +
+      (boardUrl ?
+        '<div class="leader-url-box">' +
+          '<span class="url">' + escapeHtml(boardUrl) + '</span>' +
+          '<button class="btn small ghost" data-copy-board>복사</button>' +
+        '</div>' : '') +
       '<div class="btn-row">' +
         '<a class="btn primary small" href="#/leader/' + escapeHtml(club.leader_token || '') + '">리더 뷰 열기 →</a>' +
+        '<a class="btn ghost small" href="#/board/' + escapeHtml(club.leader_token || '') + '">현황판 열기</a>' +
         '<button class="btn ghost small" data-members>멤버 관리</button>' +
         '<button class="btn ghost small" data-edit>편집</button>' +
         '<button class="btn ghost small" data-newtoken>리더 URL 재발급</button>' +
@@ -1027,6 +1139,16 @@ function renderClubCard(club) {
       try {
         await navigator.clipboard.writeText(leaderUrl);
         toast('리더 URL 복사됨');
+      } catch { toast('복사 실패 — 수동으로 선택하세요', true); }
+    });
+  }
+  const copyBoardBtn = card.querySelector('[data-copy-board]');
+  if (copyBoardBtn) {
+    copyBoardBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try {
+        await navigator.clipboard.writeText(boardUrl);
+        toast('현황판 URL 복사됨');
       } catch { toast('복사 실패 — 수동으로 선택하세요', true); }
     });
   }
@@ -1272,9 +1394,23 @@ function openMembersModal(club) {
         list.innerHTML = ms.length ? ms.map(x =>
           '<div class="member-row" data-mid="' + x.m.id + '">' +
             '<span class="name">' + escapeHtml(x.u.name) + '</span>' +
+            '<button class="del" data-link style="color:var(--primary);">내 기록 링크</button>' +
             '<button class="del" data-del>삭제</button>' +
           '</div>'
         ).join('') : '<div class="empty" style="padding:20px;">아직 멤버가 없습니다</div>';
+        list.querySelectorAll('[data-link]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const row = btn.closest('.member-row');
+            const mid = row.dataset.mid;
+            const m = findMembership(mid);
+            if (!m) return;
+            const url = location.origin + location.pathname + '#/me/' + m.token;
+            try {
+              await navigator.clipboard.writeText(url);
+              toast('개인 기록 링크 복사됨');
+            } catch { toast('복사 실패 — 수동으로 선택하세요', true); }
+          });
+        });
         list.querySelectorAll('[data-del]').forEach(btn => {
           btn.addEventListener('click', async () => {
             const row = btn.closest('.member-row');
@@ -1330,6 +1466,10 @@ function openMembersModal(club) {
 }
 
 // ============ LEADER VIEW ============
+// Per-club sub-view state (오늘 체크 vs 전체보기), kept outside renderLeader so it
+// survives the route() re-renders that happen after every save.
+let leaderViewMode = {};
+
 function renderLeader(token) {
   const club = clubByLeaderToken(token);
   if (!club) {
@@ -1353,9 +1493,20 @@ function renderLeader(token) {
   const canToggleNumbers = club.entry_type === 'number' || club.entry_type === 'count';
   const showNumbers = localStorage.getItem('bys.v3.showNums.' + club.id) === '1';
 
+  const mode = leaderViewMode[club.id] || 'today';
+  const todayIsActive = isTodayScheduled(club, currentWeek);
+  const remainingToday = (currentWeek && todayIsActive)
+    ? memberships.filter(({ m }) => {
+        const info = getTodaySlotInfo(club, m, currentWeek);
+        return info.status === 'today' && !hasValue(info.entry);
+      }).length
+    : 0;
+  const canBulkCheck = (club.entry_type || 'check') === 'check' && currentWeek && todayIsActive && remainingToday > 0;
+
   wrap.innerHTML =
     '<div class="leader-topbar">' +
       '<a href="#/admin">← 관리자로</a>' +
+      '<a href="#/board/' + escapeHtml(club.leader_token || '') + '" style="margin-left:auto;">전체 현황판 보기 →</a>' +
     '</div>' +
     '<div class="leader-header">' +
       '<div class="title-row">' +
@@ -1373,18 +1524,40 @@ function renderLeader(token) {
         '<div class="pct-big" style="color:' + escapeHtml(color) + '">' + prog.pct + '%</div>' +
       '</div>' +
     '</div>' +
-    (canToggleNumbers ?
-      '<div class="toggle-row">' +
-        '<label><input type="checkbox" id="show-nums"' + (showNumbers ? ' checked' : '') + '> 셀에 숫자 표시</label>' +
-      '</div>' : '') +
-    '<div id="weeks-wrap"></div>';
+    '<div class="view-tabs">' +
+      '<button class="tab-btn' + (mode === 'today' ? ' active' : '') + '" data-mode="today">오늘 체크</button>' +
+      '<button class="tab-btn' + (mode === 'all' ? ' active' : '') + '" data-mode="all">전체보기</button>' +
+    '</div>' +
+    (mode === 'today'
+      ? (
+        (canBulkCheck ? '<div class="btn-row"><button class="btn primary small" id="bulk-check-today">오늘 전체 체크 (' + remainingToday + '명 남음)</button></div>' : '') +
+        renderTodayList(club, memberships, showNumbers, currentWeek, todayIsActive)
+      )
+      : (
+        (canToggleNumbers ?
+          '<div class="toggle-row">' +
+            '<label><input type="checkbox" id="show-nums"' + (showNumbers ? ' checked' : '') + '> 셀에 숫자 표시</label>' +
+          '</div>' : '') +
+        '<div id="weeks-wrap"></div>'
+      )
+    );
 
-  const weeksWrap = wrap.querySelector('#weeks-wrap');
-  for (let w = 1; w <= 8; w++) {
-    weeksWrap.appendChild(renderWeekSection(club, w, memberships, showNumbers, currentWeek));
+  if (mode === 'all') {
+    const weeksWrap = wrap.querySelector('#weeks-wrap');
+    for (let w = 1; w <= 8; w++) {
+      weeksWrap.appendChild(renderWeekSection(club, w, memberships, showNumbers, currentWeek));
+    }
   }
 
-  // Cell interaction
+  // Tab switching
+  wrap.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      leaderViewMode[club.id] = btn.dataset.mode;
+      route();
+    });
+  });
+
+  // Cell interaction (covers both the 오늘 체크 cell and the 전체보기 table)
   wrap.addEventListener('click', async (e) => {
     const cell = e.target.closest('.cell');
     if (!cell) return;
@@ -1404,7 +1577,103 @@ function renderLeader(token) {
     });
   }
 
+  const bulkBtn = wrap.querySelector('#bulk-check-today');
+  if (bulkBtn) {
+    bulkBtn.addEventListener('click', () => bulkCheckToday(club, memberships, currentWeek));
+  }
+
   return wrap;
+}
+
+// 오늘 체크: one big tap target per member for today's slot only, instead of the full 8-week table
+function renderTodayList(club, memberships, showNumbers, currentWeek, todayIsActive) {
+  if (!currentWeek) {
+    return '<div class="empty" style="padding:40px 20px;">현재 진행 기간이 아니에요.<br>"전체보기"에서 지난 기록을 확인할 수 있어요.</div>';
+  }
+  if (!todayIsActive) {
+    const days = (club.fixed_days || []).slice().sort((a, b) => a - b).map(d => WEEKDAY_LABELS[d]).join('/');
+    return '<div class="empty" style="padding:40px 20px;">오늘은 활동 요일이 아니에요.' + (days ? '<br>(활동 요일: ' + escapeHtml(days) + ')' : '') + '</div>';
+  }
+
+  const type = club.entry_type || 'check';
+  const rows = memberships.map(({ m, u }) => {
+    const info = getTodaySlotInfo(club, m, currentWeek);
+    const mp = membershipProgress(m, club);
+    let cellHtml;
+    if (info.status === 'week-complete') {
+      cellHtml = '<div class="today-note done">✅ 이번 주 완료</div>';
+    } else {
+      const filled = hasValue(info.entry);
+      let display;
+      if (filled) {
+        const v = info.entry.value;
+        if (type === 'number') display = showNumbers ? String(v.n) : '<span class="cell-value circle"></span>';
+        else if (type === 'count') display = showNumbers ? String(v.count) : '<span class="cell-value circle"></span>';
+        else display = '<span class="cell-value circle"></span>';
+      } else {
+        display = '<span class="cell-value pending"></span>';
+      }
+      cellHtml = '<button class="cell today-cell ' + (filled ? 'done' : '') + '" ' +
+        'data-mid="' + m.id + '" data-week="' + info.week + '" data-slot="' + info.slot + '">' +
+        (filled && (type === 'number' || type === 'count') && showNumbers
+          ? '<span class="cell-value">' + escapeHtml(display) + '</span>'
+          : display) +
+      '</button>';
+    }
+    return '<div class="today-row">' +
+      '<div class="today-row-info">' +
+        '<div class="name">' + escapeHtml(u.name) + '</div>' +
+        '<div class="m-progress">전체 <b>' + mp.filled + '</b> / ' + mp.total + '</div>' +
+      '</div>' +
+      cellHtml +
+    '</div>';
+  }).join('');
+
+  return '<div class="today-list">' + (rows || '<div class="empty" style="padding:20px;">아직 멤버가 없습니다</div>') + '</div>';
+}
+
+// Bulk-mark every remaining member as done for today in one tap (check-type clubs only)
+async function bulkCheckToday(club, memberships, currentWeek) {
+  const ts = new Date().toISOString();
+  const date = dateStr(new Date());
+  const targets = [];
+  memberships.forEach(({ m }) => {
+    const info = getTodaySlotInfo(club, m, currentWeek);
+    if (info.status === 'today' && !hasValue(info.entry)) {
+      targets.push({ membership: m, week: info.week, slot: info.slot });
+    }
+  });
+  if (!targets.length) { toast('오늘 체크할 대상이 없어요'); return; }
+
+  targets.forEach(({ membership, week, slot }) => {
+    const existing = cache.entries.find(e =>
+      e.membership_id === membership.id && e.week === week && e.slot === slot
+    );
+    if (existing) { existing.value = { state: 'done' }; existing.date = date; existing.updated_at = ts; }
+    else cache.entries.push({
+      id: 'temp_' + Math.random().toString(36).slice(2, 9),
+      membership_id: membership.id, week, slot, date, value: { state: 'done' }, updated_at: ts,
+    });
+    pendingAdd({ action: 'upsert', membership_id: membership.id, week, slot, date, value: { state: 'done' }, ts });
+  });
+
+  route();
+  dbg('일괄 체크 시작: ' + targets.length + '명');
+
+  const results = await Promise.all(targets.map(({ membership, week, slot }) =>
+    sb.from('entries').upsert(
+      { membership_id: membership.id, week, slot, date, value: { state: 'done' }, updated_at: ts },
+      { onConflict: 'membership_id,week,slot' }
+    )
+  ));
+  let anyErr = false;
+  results.forEach((r, i) => {
+    const { membership, week, slot } = targets[i];
+    if (r.error) { anyErr = true; dbg('❌ 일괄 체크 실패 W' + week + 'S' + slot + ': ' + r.error.message); }
+    else pendingRemove({ membership_id: membership.id, week, slot, ts });
+  });
+  flashSave(anyErr);
+  toast(anyErr ? '일부 저장 실패 (큐 보관)' : targets.length + '명 오늘 체크 완료', anyErr);
 }
 
 function renderWeekSection(club, week, memberships, showNumbers, currentWeek) {
@@ -1459,7 +1728,7 @@ function renderCellRow(club, membership, week, showNumbers) {
         display = '<span class="cell-value circle"></span>';
       }
     } else {
-      display = '<span class="cell-value empty"></span>';
+      display = '<span class="cell-value pending"></span>';
     }
     const dateLabel = slotDate ? fmtDateWithDay(slotDate) : '—';
 
@@ -1470,6 +1739,166 @@ function renderCellRow(club, membership, week, showNumbers) {
         : display) +
       '<span class="cell-date">' + dateLabel + '</span>' +
     '</button>';
+  }
+  return cells;
+}
+
+// ============ BOARD (전체 현황판) ============
+// Read-only, shareable with every member — one page, whole-club status at a glance.
+function renderBoard(token) {
+  const club = clubByLeaderToken(token);
+  if (!club) {
+    const w = document.createElement('div');
+    w.className = 'container';
+    w.innerHTML = '<div class="empty">현황판을 찾을 수 없습니다.</div>';
+    return w;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'container';
+
+  const memberships = membershipsOfClub(club.id).map(m => ({ m, u: findUser(m.user_id) })).filter(x => x.u);
+  memberships.sort((a, b) => (a.u.name || '').localeCompare(b.u.name || ''));
+
+  const prog = clubProgress(club);
+  const period = getClubPeriod(club);
+  const currentWeek = getCurrentWeek(club);
+  const color = club.color || '#2A9D8F';
+
+  const rows = memberships.map(({ m, u }) => {
+    const mp = membershipProgress(m, club);
+    let weekCells = '';
+    for (let w = 1; w <= 8; w++) {
+      const wp = membershipWeekProgress(m, club, w);
+      const tier = wp.filled <= 0 ? 'none' : (wp.filled >= wp.total ? 'full' : 'half');
+      weekCells += '<span class="board-week ' + tier + (w === currentWeek ? ' current' : '') +
+        '" title="W' + w + ': ' + wp.filled + '/' + wp.total + '"></span>';
+    }
+    return '<div class="board-row">' +
+      '<div class="board-row-top">' +
+        '<a class="board-name" href="#/me/' + escapeHtml(m.token) + '">' + escapeHtml(u.name) + ' →</a>' +
+        '<div class="board-pct" style="color:' + escapeHtml(color) + '">' + mp.pct + '%</div>' +
+      '</div>' +
+      '<div class="progress"><div class="progress-fill" style="width:' + mp.pct + '%; background:' + escapeHtml(color) + '"></div></div>' +
+      '<div class="board-weeks">' + weekCells + '</div>' +
+    '</div>';
+  }).join('');
+
+  wrap.innerHTML =
+    '<div class="leader-topbar"><a href="#/leader/' + escapeHtml(token) + '">← 리더 뷰로</a></div>' +
+    '<div class="leader-header">' +
+      '<div class="title-row">' +
+        '<div class="title-dot" style="background:' + escapeHtml(color) + '"></div>' +
+        '<h1>' + escapeHtml(club.name || '') + '</h1>' +
+      '</div>' +
+      '<div class="meta">' +
+        '전체 현황판' +
+        (period.start ? ' · <b>' + fmtDateFull(period.start) + '</b> ~ <b>' + fmtDateFull(period.end) + '</b>' : '') +
+        (currentWeek ? '<span class="current-week-badge" style="background:' + escapeHtml(color) + '22; color:' + escapeHtml(color) + '">현재 W' + currentWeek + '</span>' : '') +
+      '</div>' +
+      '<div class="progress-lg">' +
+        '<div class="progress"><div class="progress-fill" style="width:' + prog.pct + '%; background:' + escapeHtml(color) + '"></div></div>' +
+        '<div class="pct-big" style="color:' + escapeHtml(color) + '">' + prog.pct + '%</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="board-list">' + (rows || '<div class="empty" style="padding:20px;">아직 멤버가 없습니다</div>') + '</div>';
+
+  return wrap;
+}
+
+// ============ MEMBER PAGE (개인별 기록, 읽기 전용) ============
+function renderMemberPage(token) {
+  const membership = cache.memberships.find(m => m.token === token);
+  const club = membership && findClub(membership.club_id);
+  const user = membership && findUser(membership.user_id);
+  if (!membership || !club || !user) {
+    const w = document.createElement('div');
+    w.className = 'container';
+    w.innerHTML = '<div class="empty">기록을 찾을 수 없습니다.</div>';
+    return w;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'container';
+
+  const mp = membershipProgress(membership, club);
+  const period = getClubPeriod(club);
+  const currentWeek = getCurrentWeek(club);
+  const color = club.color || '#2A9D8F';
+  const showNumbers = localStorage.getItem('bys.v3.showNums.' + club.id) === '1';
+
+  wrap.innerHTML =
+    '<div class="leader-header">' +
+      '<div class="title-row">' +
+        '<div class="title-dot" style="background:' + escapeHtml(color) + '"></div>' +
+        '<h1>' + escapeHtml(user.name) + '님의 기록</h1>' +
+      '</div>' +
+      '<div class="meta">' +
+        escapeHtml(club.name || '') +
+        (period.start ? ' · <b>' + fmtDateFull(period.start) + '</b> ~ <b>' + fmtDateFull(period.end) + '</b>' : '') +
+        (currentWeek ? '<span class="current-week-badge" style="background:' + escapeHtml(color) + '22; color:' + escapeHtml(color) + '">현재 W' + currentWeek + '</span>' : '') +
+      '</div>' +
+      '<div class="progress-lg">' +
+        '<div class="progress"><div class="progress-fill" style="width:' + mp.pct + '%; background:' + escapeHtml(color) + '"></div></div>' +
+        '<div class="pct-big" style="color:' + escapeHtml(color) + '">' + mp.pct + '%</div>' +
+      '</div>' +
+    '</div>' +
+    '<div id="weeks-wrap"></div>';
+
+  const weeksWrap = wrap.querySelector('#weeks-wrap');
+  for (let w = 1; w <= 8; w++) {
+    weeksWrap.appendChild(renderMemberWeekSection(club, membership, w, showNumbers, currentWeek));
+  }
+
+  return wrap; // read-only: no click listeners attached, so nothing here can change data
+}
+
+function renderMemberWeekSection(club, membership, week, showNumbers, currentWeek) {
+  const section = document.createElement('div');
+  section.className = 'week-section';
+  const range = getWeekRange(club, week);
+  const wp = membershipWeekProgress(membership, club, week);
+  const isCurrent = week === currentWeek;
+  const cells = renderReadOnlyCellRow(club, membership, week, showNumbers);
+
+  section.innerHTML =
+    '<div class="week-head' + (isCurrent ? ' is-current' : '') + '">' +
+      '<div>' +
+        '<span class="w-label">W' + week + '</span>' +
+        '<span class="w-dates">' + fmtDateWithDay(range.start) + ' ~ ' + fmtDateWithDay(range.end) + '</span>' +
+      '</div>' +
+      '<div class="w-progress"><b>' + wp.filled + '</b> / ' + wp.total + '</div>' +
+    '</div>' +
+    '<div class="cell-row">' + cells + '</div>';
+
+  return section;
+}
+
+function renderReadOnlyCellRow(club, membership, week, showNumbers) {
+  const freq = club.frequency_per_week || 7;
+  let cells = '';
+  for (let s = 0; s < freq; s++) {
+    const entry = entryOf(membership.id, week, s);
+    const filled = hasValue(entry);
+    const slotDate = getSlotDate(club, week, s, entry);
+
+    let display;
+    if (filled) {
+      const v = entry.value;
+      if (club.entry_type === 'number') display = showNumbers ? String(v.n) : '<span class="cell-value circle"></span>';
+      else if (club.entry_type === 'count') display = showNumbers ? String(v.count) : '<span class="cell-value circle"></span>';
+      else display = '<span class="cell-value circle"></span>';
+    } else {
+      display = '<span class="cell-value pending"></span>';
+    }
+    const dateLabel = slotDate ? fmtDateWithDay(slotDate) : '—';
+
+    cells += '<div class="cell ro ' + (filled ? 'done' : '') + '">' +
+      (filled && (club.entry_type === 'number' || club.entry_type === 'count') && showNumbers
+        ? '<span class="cell-value">' + escapeHtml(display) + '</span>'
+        : display) +
+      '<span class="cell-date">' + dateLabel + '</span>' +
+    '</div>';
   }
   return cells;
 }
