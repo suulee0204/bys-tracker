@@ -260,25 +260,37 @@ a { color: inherit; text-decoration: none; }
 .tab-btn.active { color: var(--text); border-bottom-color: var(--primary); }
 
 /* ==== LEADER: TODAY QUICK-CHECK LIST ==== */
-.today-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
-.today-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  background: var(--bg); border: 1px solid var(--line-soft);
-  border-radius: 14px; padding: 12px 16px;
+.today-heading {
+  font-weight: 700; font-size: 15px; color: var(--text); margin-bottom: 10px;
 }
-.today-row-info .name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
-.today-row-info .m-progress { font-size: 12px; color: var(--muted); }
-.today-row-info .m-progress b { color: var(--text-soft); font-weight: 700; }
+.today-heading-date { color: var(--muted); font-weight: 500; }
+.today-list {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 10px; margin-bottom: 24px;
+}
+@media (max-width: 640px) {
+  .today-list { grid-template-columns: repeat(2, 1fr); }
+}
+.today-row {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: var(--bg); border: 1px solid var(--line-soft);
+  border-radius: 14px; padding: 12px 8px; text-align: center;
+}
+.today-row .name {
+  font-weight: 700; font-size: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+.today-row .m-progress { font-size: 11px; color: var(--muted); }
+.today-row .m-progress b { color: var(--text-soft); font-weight: 700; }
 .today-cell {
-  flex: 0 0 auto; min-width: 72px; min-height: 72px;
-  padding: 8px; border-radius: 16px;
+  flex: 0 0 auto; min-width: 64px; min-height: 64px;
+  padding: 6px; border-radius: 14px;
 }
 .today-cell .cell-value.circle::before,
-.today-cell .cell-value.pending::before { width: 30px; height: 30px; }
-.today-cell .cell-value { font-size: 26px; }
+.today-cell .cell-value.pending::before { width: 26px; height: 26px; }
+.today-cell .cell-value { font-size: 22px; }
 .today-note {
-  font-size: 13px; color: var(--muted-2); padding: 10px 4px;
-  white-space: nowrap; flex-shrink: 0;
+  font-size: 12px; color: var(--muted-2); padding: 10px 4px;
 }
 .today-note.done { color: var(--primary); font-weight: 700; }
 
@@ -288,16 +300,21 @@ a { color: inherit; text-decoration: none; }
   background: var(--bg); border: 1px solid var(--line-soft);
   border-radius: 14px; padding: 14px 16px;
 }
-.board-row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 10px; }
-.board-name { font-weight: 700; font-size: 16px; color: var(--text); }
-.board-pct { font-weight: 800; font-size: 15px; flex-shrink: 0; }
-.board-row .progress { height: 6px; margin-bottom: 10px; }
+.board-row-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.board-name {
+  font-weight: 700; font-size: 15px; color: var(--primary); flex: 0 0 auto;
+  width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.board-row-top .progress { flex: 1; height: 6px; }
+.board-pct { font-weight: 800; font-size: 14px; flex: 0 0 auto; width: 38px; text-align: right; }
 .board-weeks { display: flex; gap: 6px; }
 .board-week {
   flex: 1; height: 10px; border-radius: 4px; background: var(--line-soft);
 }
-.board-week.half { background: var(--primary); opacity: 0.45; }
-.board-week.full { background: var(--primary); opacity: 1; }
+.board-week.tier-1 { background: var(--primary); opacity: 0.25; }
+.board-week.tier-2 { background: var(--primary); opacity: 0.5; }
+.board-week.tier-3 { background: var(--primary); opacity: 0.75; }
+.board-week.tier-4 { background: var(--primary); opacity: 1; }
 .board-week.current { box-shadow: 0 0 0 2px var(--text-soft) inset; }
 
 /* Read-only cell (개인 기록 페이지: 클릭 불가) */
@@ -305,54 +322,74 @@ a { color: inherit; text-decoration: none; }
 .cell.ro:hover { border-color: var(--line); box-shadow: none; }
 .cell.ro:active { transform: none; }
 
-/* Week sections */
-.week-section { margin-bottom: 32px; }
-.week-head {
-  display: flex; align-items: baseline; justify-content: space-between;
-  padding: 10px 0 14px; border-bottom: 2px solid var(--line-soft);
-  margin-bottom: 12px; gap: 12px; flex-wrap: wrap;
+/* Week sections — accordion: only the current (or clicked-open) week is expanded */
+.week-section {
+  margin-bottom: 10px; border: 1px solid var(--line-soft);
+  border-radius: 12px; background: var(--bg); overflow: hidden;
 }
+.week-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; gap: 12px; flex-wrap: wrap;
+  cursor: pointer; user-select: none;
+}
+.week-head-left { display: flex; align-items: baseline; gap: 2px; }
+.week-caret {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; margin-right: 6px; color: var(--muted-2); font-size: 11px;
+  transition: transform .2s;
+}
+.week-section.open .week-caret { transform: rotate(90deg); }
 .week-head .w-label {
-  font-size: 20px; font-weight: 800;
+  font-size: 18px; font-weight: 800;
   color: var(--text); letter-spacing: -0.02em;
 }
 .week-head .w-dates {
-  color: var(--muted); font-size: 13px;
-  margin-left: 10px;
+  color: var(--muted); font-size: 12px;
+  margin-left: 8px;
 }
 .week-head .w-progress {
   font-size: 13px; color: var(--muted-2);
 }
 .week-head .w-progress b { color: var(--text); font-weight: 700; }
 .week-head.is-current .w-label { color: var(--primary); }
+.week-body { display: none; padding: 0 14px 14px; border-top: 1px solid var(--line-soft); }
+.week-section.open .week-body {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 6px; padding-top: 10px;
+}
+@media (max-width: 640px) {
+  .week-section.open .week-body { grid-template-columns: 1fr; }
+}
 
 .member-block {
   background: var(--bg); border: 1px solid var(--line-soft);
-  border-radius: 12px; padding: 14px 16px;
-  margin-bottom: 10px;
+  border-radius: 10px; padding: 8px 10px;
+  display: flex; align-items: center; gap: 10px;
+  min-width: 0;
 }
-.member-block .name-row {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 12px;
+.member-block .name-col { flex: 0 0 auto; width: 66px; overflow: hidden; }
+.member-block .name {
+  font-weight: 600; font-size: 13px; line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.member-block .name { font-weight: 600; font-size: 15px; }
 .member-block .m-progress {
-  font-size: 12px; color: var(--muted);
+  font-size: 10px; color: var(--muted);
 }
 .member-block .m-progress b { color: var(--text-soft); font-weight: 700; }
+.member-block .cell-row { flex: 1; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
 
 .cell-row {
-  display: flex; gap: 10px; flex-wrap: wrap;
+  display: flex; gap: 6px; flex-wrap: wrap;
 }
 .cell {
   flex: 0 0 auto;
-  min-width: 72px;
-  padding: 10px 6px;
+  min-width: 50px;
+  padding: 6px 4px;
   background: var(--bg-soft);
   border: 1.5px solid var(--line);
-  border-radius: 12px;
+  border-radius: 9px;
   display: flex; flex-direction: column;
-  align-items: center; gap: 4px;
+  align-items: center; gap: 2px;
   transition: transform .1s, background .15s;
 }
 .cell:active { transform: scale(0.94); }
@@ -361,26 +398,26 @@ a { color: inherit; text-decoration: none; }
 }
 .cell.done .cell-date { color: rgba(255,255,255,0.85); }
 .cell-value {
-  font-size: 20px; font-weight: 700; min-height: 24px;
+  font-size: 15px; font-weight: 700; min-height: 17px;
   display: flex; align-items: center;
 }
 .cell-value.circle::before {
-  content: ''; display: block; width: 22px; height: 22px;
+  content: ''; display: block; width: 15px; height: 15px;
   border-radius: 50%; background: currentColor;
 }
 .cell-value.pending::before {
-  content: ''; display: block; width: 22px; height: 22px;
+  content: ''; display: block; width: 15px; height: 15px;
   border-radius: 50%; border: 2px solid var(--muted-2);
   background: transparent;
 }
 .cell-date {
-  font-size: 11px; font-weight: 500; color: var(--muted);
-  min-height: 14px;
+  font-size: 10px; font-weight: 500; color: var(--muted);
+  min-height: 13px;
 }
 
 @media (max-width: 640px) {
-  .cell { min-width: 62px; padding: 8px 4px; }
-  .cell-value { font-size: 18px; }
+  .cell { min-width: 40px; padding: 5px 2px; }
+  .cell-value { font-size: 13px; }
 }
 
 /* ==== MODAL ==== */
@@ -594,6 +631,8 @@ const COLOR_PRESETS = [
 ];
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+// 자유 요일 모드에서 아직 날짜가 정해지지 않은 빈 칸에 표시할 자리표시 요일 (실제 날짜와는 무관, 표시용)
+const SLOT_FALLBACK_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 
 // ============ CACHE ============
 let cache = { users: [], clubs: [], memberships: [], entries: [], loaded: false, loading: null };
@@ -676,6 +715,9 @@ function fmtDateWithDay(d) {
 function fmtDateFull(d) {
   return d.getUTCFullYear() + '년 ' + (d.getUTCMonth() + 1) + '월 ' + d.getUTCDate() + '일';
 }
+function fmtDateMonthDayWeekdayKR(d) {
+  return (d.getUTCMonth() + 1) + '월 ' + d.getUTCDate() + '일 (' + WEEKDAY_LABELS[d.getUTCDay()] + '요일)';
+}
 
 function getClubPeriod(club) {
   const start = parseDate(club.start_date);
@@ -701,7 +743,14 @@ function getWeekRange(club, week) {
   return { start: s, end: e };
 }
 
-// Slot date: fixed mode calculates from weekday, freeform uses stored entry date
+// 주 7회(매일)는 '자유' 모드여도 어느 요일을 고를지 선택의 여지가 없으므로,
+// 슬롯 순서를 그 주의 날짜 순서로 확정한다. 진짜 자유 모드(주 7회 미만)만
+// "체크한 날짜가 곧 그 칸의 날짜"로 남는다.
+function isDeterministicSchedule(club) {
+  return club.frequency_mode === 'fixed' || (club.frequency_per_week || 7) >= 7;
+}
+
+// Slot date: 고정/매일 모드는 요일로 계산, 진짜 자유 모드는 저장된 entry 날짜를 그대로 사용
 function getSlotDate(club, week, slot, entry) {
   if (club.frequency_mode === 'fixed' && club.fixed_days && club.fixed_days.length) {
     const range = getWeekRange(club, week);
@@ -711,6 +760,10 @@ function getSlotDate(club, week, slot, entry) {
     const startDow = range.start.getUTCDay();
     const offset = (dow - startDow + 7) % 7;
     return addDays(range.start, offset);
+  }
+  if ((club.frequency_per_week || 7) >= 7) {
+    const range = getWeekRange(club, week);
+    return addDays(range.start, slot);
   }
   return entry && entry.date ? parseDate(entry.date) : null;
 }
@@ -737,10 +790,10 @@ function membershipWeekProgress(membership, club, week) {
   return { filled, total, pct: total ? Math.round(filled / total * 100) : 0 };
 }
 
-// Is today one of this club's activity days? (fixed-schedule clubs only; freeform clubs are "always on")
+// Is today one of this club's activity days? (고정/매일 모드만 요일이 정해져 있음; 진짜 자유 모드는 "항상 가능")
 function isTodayScheduled(club, currentWeek) {
   if (!currentWeek) return false;
-  if (club.frequency_mode !== 'fixed') return true;
+  if (!isDeterministicSchedule(club)) return true;
   const todayStr = dateStr(new Date());
   const freq = club.frequency_per_week || 7;
   for (let s = 0; s < freq; s++) {
@@ -754,7 +807,7 @@ function isTodayScheduled(club, currentWeek) {
 function getTodaySlotInfo(club, membership, currentWeek) {
   const todayStr = dateStr(new Date());
   const freq = club.frequency_per_week || 7;
-  if (club.frequency_mode === 'fixed') {
+  if (isDeterministicSchedule(club)) {
     for (let s = 0; s < freq; s++) {
       const d = getSlotDate(club, currentWeek, s, null);
       if (d && dateStr(d) === todayStr) {
@@ -763,7 +816,7 @@ function getTodaySlotInfo(club, membership, currentWeek) {
     }
     return { status: 'week-complete' };
   }
-  // freeform: prefer an entry already dated today, otherwise the next empty slot this week
+  // 진짜 자유 모드: 오늘 날짜로 이미 기록된 슬롯 우선, 없으면 다음 빈 슬롯
   for (let s = 0; s < freq; s++) {
     const entry = entryOf(membership.id, currentWeek, s);
     if (entry && entry.date === todayStr) {
@@ -916,7 +969,7 @@ async function pendingFlush() {
   _flushing = false;
   if (anySuccess) {
     invalidateCache();
-    try { await loadAll(); route(); } catch {}
+    try { await loadAll(); route({ preserveScroll: true }); } catch {}
   }
 }
 window.addEventListener('online', pendingFlush);
@@ -962,10 +1015,14 @@ function showModal(title, bodyHtml, options) {
 }
 
 // ============ ROUTING ============
-async function route() {
+async function route(opts) {
+  opts = opts || {};
   const hash = location.hash || '#/';
   const app = document.getElementById('app');
-  app.innerHTML = '<div class="loading">불러오는 중…</div>';
+  const scrollY = window.scrollY;
+  if (!cache.loaded) {
+    app.innerHTML = '<div class="loading">불러오는 중…</div>';
+  }
   dbgInit();
   try {
     await loadAll();
@@ -1001,7 +1058,7 @@ async function route() {
 
   app.innerHTML = '';
   app.appendChild(view);
-  window.scrollTo(0, 0);
+  window.scrollTo(0, opts.preserveScroll ? scrollY : 0);
 }
 window.addEventListener('hashchange', route);
 
@@ -1470,6 +1527,15 @@ function openMembersModal(club) {
 // survives the route() re-renders that happen after every save.
 let leaderViewMode = {};
 
+// Per-club set of expanded week numbers in 전체보기 (accordion) — defaults to just the current week
+let leaderOpenWeeks = {};
+function getOpenWeeks(club, currentWeek) {
+  if (!leaderOpenWeeks[club.id]) {
+    leaderOpenWeeks[club.id] = new Set(currentWeek ? [currentWeek] : []);
+  }
+  return leaderOpenWeeks[club.id];
+}
+
 function renderLeader(token) {
   const club = clubByLeaderToken(token);
   if (!club) {
@@ -1530,7 +1596,12 @@ function renderLeader(token) {
     '</div>' +
     (mode === 'today'
       ? (
-        (canBulkCheck ? '<div class="btn-row"><button class="btn primary small" id="bulk-check-today">오늘 전체 체크 (' + remainingToday + '명 남음)</button></div>' : '') +
+        (currentWeek && todayIsActive ?
+          '<div class="today-heading">' +
+            ((club.entry_type || 'check') === 'check' ? '오늘 전체 체크' : '오늘') +
+            ' <span class="today-heading-date">- ' + fmtDateMonthDayWeekdayKR(new Date()) + '</span>' +
+          '</div>' : '') +
+        (canBulkCheck ? '<div class="btn-row"><button class="btn primary small" id="bulk-check-today">체크하기 (' + remainingToday + '명 남음)</button></div>' : '') +
         renderTodayList(club, memberships, showNumbers, currentWeek, todayIsActive)
       )
       : (
@@ -1544,8 +1615,9 @@ function renderLeader(token) {
 
   if (mode === 'all') {
     const weeksWrap = wrap.querySelector('#weeks-wrap');
+    const openWeeks = getOpenWeeks(club, currentWeek);
     for (let w = 1; w <= 8; w++) {
-      weeksWrap.appendChild(renderWeekSection(club, w, memberships, showNumbers, currentWeek));
+      weeksWrap.appendChild(renderWeekSection(club, w, memberships, showNumbers, currentWeek, openWeeks));
     }
   }
 
@@ -1601,7 +1673,7 @@ function renderTodayList(club, memberships, showNumbers, currentWeek, todayIsAct
     const mp = membershipProgress(m, club);
     let cellHtml;
     if (info.status === 'week-complete') {
-      cellHtml = '<div class="today-note done">✅ 이번 주 완료</div>';
+      cellHtml = '<div class="today-note done">✅ 이번 주<br>완료</div>';
     } else {
       const filled = hasValue(info.entry);
       let display;
@@ -1621,11 +1693,9 @@ function renderTodayList(club, memberships, showNumbers, currentWeek, todayIsAct
       '</button>';
     }
     return '<div class="today-row">' +
-      '<div class="today-row-info">' +
-        '<div class="name">' + escapeHtml(u.name) + '</div>' +
-        '<div class="m-progress">전체 <b>' + mp.filled + '</b> / ' + mp.total + '</div>' +
-      '</div>' +
+      '<div class="name">' + escapeHtml(u.name) + '</div>' +
       cellHtml +
+      '<div class="m-progress">전체 <b>' + mp.filled + '</b>/' + mp.total + '</div>' +
     '</div>';
   }).join('');
 
@@ -1657,7 +1727,7 @@ async function bulkCheckToday(club, memberships, currentWeek) {
     pendingAdd({ action: 'upsert', membership_id: membership.id, week, slot, date, value: { state: 'done' }, ts });
   });
 
-  route();
+  route({ preserveScroll: true });
   dbg('일괄 체크 시작: ' + targets.length + '명');
 
   const results = await Promise.all(targets.map(({ membership, week, slot }) =>
@@ -1676,9 +1746,10 @@ async function bulkCheckToday(club, memberships, currentWeek) {
   toast(anyErr ? '일부 저장 실패 (큐 보관)' : targets.length + '명 오늘 체크 완료', anyErr);
 }
 
-function renderWeekSection(club, week, memberships, showNumbers, currentWeek) {
+function renderWeekSection(club, week, memberships, showNumbers, currentWeek, openWeeks) {
   const section = document.createElement('div');
-  section.className = 'week-section';
+  const isOpen = openWeeks.has(week);
+  section.className = 'week-section' + (isOpen ? ' open' : '');
   const range = getWeekRange(club, week);
   const wp = clubWeekProgress(club, week);
   const isCurrent = week === currentWeek;
@@ -1688,9 +1759,9 @@ function renderWeekSection(club, week, memberships, showNumbers, currentWeek) {
     const mp = membershipWeekProgress(m, club, week);
     const cells = renderCellRow(club, m, week, showNumbers);
     return '<div class="member-block">' +
-      '<div class="name-row">' +
+      '<div class="name-col">' +
         '<div class="name">' + escapeHtml(u.name) + '</div>' +
-        '<div class="m-progress"><b>' + mp.filled + '</b> / ' + mp.total + '</div>' +
+        '<div class="m-progress"><b>' + mp.filled + '</b>/' + mp.total + '</div>' +
       '</div>' +
       '<div class="cell-row">' + cells + '</div>' +
     '</div>';
@@ -1698,13 +1769,21 @@ function renderWeekSection(club, week, memberships, showNumbers, currentWeek) {
 
   section.innerHTML =
     '<div class="week-head' + (isCurrent ? ' is-current' : '') + '">' +
-      '<div>' +
+      '<div class="week-head-left">' +
+        '<span class="week-caret">▶</span>' +
         '<span class="w-label">W' + week + '</span>' +
         '<span class="w-dates">' + fmtDateWithDay(range.start) + ' ~ ' + fmtDateWithDay(range.end) + '</span>' +
       '</div>' +
       '<div class="w-progress"><b>' + wp.filled + '</b> / ' + wp.total + '</div>' +
     '</div>' +
-    (memberBlocks || '<div class="empty" style="padding:20px;">아직 멤버가 없습니다</div>');
+    '<div class="week-body">' +
+      (memberBlocks || '<div class="empty" style="padding:20px;">아직 멤버가 없습니다</div>') +
+    '</div>';
+
+  section.querySelector('.week-head').addEventListener('click', () => {
+    if (openWeeks.has(week)) openWeeks.delete(week); else openWeeks.add(week);
+    route({ preserveScroll: true });
+  });
 
   return section;
 }
@@ -1730,7 +1809,7 @@ function renderCellRow(club, membership, week, showNumbers) {
     } else {
       display = '<span class="cell-value pending"></span>';
     }
-    const dateLabel = slotDate ? fmtDateWithDay(slotDate) : '—';
+    const dateLabel = slotDate ? fmtDateWithDay(slotDate) : SLOT_FALLBACK_LABELS[s % 7];
 
     cells += '<button class="cell ' + (filled ? 'done' : '') + '" ' +
       'data-mid="' + membership.id + '" data-week="' + week + '" data-slot="' + s + '">' +
@@ -1770,16 +1849,22 @@ function renderBoard(token) {
     let weekCells = '';
     for (let w = 1; w <= 8; w++) {
       const wp = membershipWeekProgress(m, club, w);
-      const tier = wp.filled <= 0 ? 'none' : (wp.filled >= wp.total ? 'full' : 'half');
+      const ratio = wp.total ? wp.filled / wp.total : 0;
+      let tier;
+      if (ratio <= 0) tier = 'tier-0';
+      else if (ratio >= 1) tier = 'tier-4';
+      else if (ratio > 0.75) tier = 'tier-3';
+      else if (ratio > 0.5) tier = 'tier-2';
+      else tier = 'tier-1';
       weekCells += '<span class="board-week ' + tier + (w === currentWeek ? ' current' : '') +
         '" title="W' + w + ': ' + wp.filled + '/' + wp.total + '"></span>';
     }
     return '<div class="board-row">' +
       '<div class="board-row-top">' +
-        '<a class="board-name" href="#/me/' + escapeHtml(m.token) + '">' + escapeHtml(u.name) + ' →</a>' +
+        '<a class="board-name" href="#/me/' + escapeHtml(m.token) + '">' + escapeHtml(u.name) + '</a>' +
+        '<div class="progress"><div class="progress-fill" style="width:' + mp.pct + '%; background:' + escapeHtml(color) + '"></div></div>' +
         '<div class="board-pct" style="color:' + escapeHtml(color) + '">' + mp.pct + '%</div>' +
       '</div>' +
-      '<div class="progress"><div class="progress-fill" style="width:' + mp.pct + '%; background:' + escapeHtml(color) + '"></div></div>' +
       '<div class="board-weeks">' + weekCells + '</div>' +
     '</div>';
   }).join('');
@@ -1891,7 +1976,7 @@ function renderReadOnlyCellRow(club, membership, week, showNumbers) {
     } else {
       display = '<span class="cell-value pending"></span>';
     }
-    const dateLabel = slotDate ? fmtDateWithDay(slotDate) : '—';
+    const dateLabel = slotDate ? fmtDateWithDay(slotDate) : SLOT_FALLBACK_LABELS[s % 7];
 
     cells += '<div class="cell ro ' + (filled ? 'done' : '') + '">' +
       (filled && (club.entry_type === 'number' || club.entry_type === 'count') && showNumbers
@@ -1924,7 +2009,7 @@ function openNumberModal(club, membership, week, slot) {
   const slotDate = getSlotDate(club, week, slot, entry);
   const unit = club.unit || '';
 
-  const dateInputHtml = (club.frequency_mode === 'freeform') ?
+  const dateInputHtml = (!isDeterministicSchedule(club)) ?
     '<div class="form-group">' +
       '<label>날짜 (선택사항)</label>' +
       '<input type="date" id="nm-date" value="' + (slotDate ? dateStr(slotDate) : dateStr(new Date())) + '">' +
@@ -1974,7 +2059,7 @@ function openCountModal(club, membership, week, slot) {
   let count = entry && entry.value && typeof entry.value.count === 'number' ? entry.value.count : 0;
   const slotDate = getSlotDate(club, week, slot, entry);
 
-  const dateInputHtml = (club.frequency_mode === 'freeform') ?
+  const dateInputHtml = (!isDeterministicSchedule(club)) ?
     '<div class="form-group">' +
       '<label>날짜</label>' +
       '<input type="date" id="cm-date" value="' + (slotDate ? dateStr(slotDate) : dateStr(new Date())) + '">' +
@@ -2023,15 +2108,15 @@ async function saveEntry(club, membership, week, slot, value, dateOverride) {
   const ts = new Date().toISOString();
   const isDelete = value === null;
 
-  // For freeform: auto-assign today's date if none provided and value present
+  // 고정/매일(주 7회) 모드는 슬롯 위치로 날짜가 정해져 있고, 진짜 자유 모드만 "체크한 시점의 날짜"를 붙인다
   let date = dateOverride || null;
   if (!isDelete && !date) {
-    if (club.frequency_mode === 'freeform') {
-      const existing = entryOf(membership.id, week, slot);
-      date = existing && existing.date ? existing.date : dateStr(new Date());
-    } else {
+    if (isDeterministicSchedule(club)) {
       const d = getSlotDate(club, week, slot, null);
       date = d ? dateStr(d) : null;
+    } else {
+      const existing = entryOf(membership.id, week, slot);
+      date = existing && existing.date ? existing.date : dateStr(new Date());
     }
   }
 
@@ -2051,8 +2136,8 @@ async function saveEntry(club, membership, week, slot, value, dateOverride) {
     });
   }
 
-  // Re-render leader view (fast, in-memory)
-  route();
+  // Re-render leader view (fast, in-memory) without jumping the scroll position
+  route({ preserveScroll: true });
 
   // Pending queue
   const op = { action: isDelete ? 'delete' : 'upsert', membership_id: membership.id, week, slot, date, value, ts };
